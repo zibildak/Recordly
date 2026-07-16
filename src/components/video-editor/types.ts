@@ -14,6 +14,8 @@ export interface ZoomRegion {
 	depth: ZoomDepth;
 	focus: ZoomFocus;
 	mode?: ZoomMode;
+	tilt3D?: boolean;
+	tilt3DAngle?: number;
 }
 
 export interface CursorTelemetryPoint {
@@ -103,7 +105,6 @@ export type EditorEffectSection =
 	| "scene"
 	| "cursor"
 	| "captions"
-	| "caption"
 	| "webcam"
 	| "settings"
 	| "zoom"
@@ -553,8 +554,6 @@ export type AutoCaptionAnimation = "none" | "fade" | "rise" | "pop";
 
 export interface AutoCaptionSettings {
 	enabled: boolean;
-	/** Show the hover ghost on the timeline caption track for click-to-add. */
-	timelineQuickAdd: boolean;
 	language: string;
 	fontFamily: string;
 	fontSize: number;
@@ -570,7 +569,6 @@ export interface AutoCaptionSettings {
 
 export const DEFAULT_AUTO_CAPTION_SETTINGS: AutoCaptionSettings = {
 	enabled: false,
-	timelineQuickAdd: true,
 	language: "auto",
 	fontFamily: getDefaultCaptionFontFamily(),
 	fontSize: 30,

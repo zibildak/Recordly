@@ -1,4 +1,4 @@
-import type { ZoomFocus, ZoomRegion } from "../types";
+import type { CursorTelemetryPoint, ZoomFocus, ZoomRegion } from "../types";
 import { ZOOM_DEPTH_SCALES } from "../types";
 import {
 	TRANSITION_WINDOW_MS,
@@ -17,6 +17,9 @@ type DominantRegionOptions = {
 	connectZooms?: boolean;
 	zoomInDurationMs?: number;
 	zoomOutDurationMs?: number;
+	connectedZoomGapMs?: number;
+	connectedZoomDurationMs?: number;
+	cursorTelemetry?: CursorTelemetryPoint[];
 };
 
 type ConnectedRegionPair = {
@@ -37,7 +40,7 @@ type ConnectedPanTransition = {
 export function computeRegionStrength(
 	region: ZoomRegion,
 	timeMs: number,
-	options: Pick<DominantRegionOptions, "zoomInDurationMs" | "zoomOutDurationMs"> = {},
+	options: Pick<DominantRegionOptions, "zoomInDurationMs" | "zoomOutDurationMs" | "cursorTelemetry"> = {},
 ) {
 	const zoomInDurationMs = Math.max(1, options.zoomInDurationMs ?? ZOOM_IN_TRANSITION_WINDOW_MS);
 	const zoomOutDurationMs = Math.max(1, options.zoomOutDurationMs ?? TRANSITION_WINDOW_MS);
@@ -52,9 +55,7 @@ export function computeRegionStrength(
 		zoomOutStart = midpoint;
 	}
 
-	const leadOutEnd = zoomOutStart + zoomOutDurationMs;
-
-	if (adjustedTimeMs < leadInStart || adjustedTimeMs > leadOutEnd) {
+	if (adjustedTimeMs < leadInStart) {
 		return 0;
 	}
 
@@ -67,7 +68,46 @@ export function computeRegionStrength(
 		return 1;
 	}
 
-	const progress = clamp01((adjustedTimeMs - zoomOutStart) / zoomOutDurationMs);
+	let actualZoomOutStart = zoomOutStart;
+	if (options.cursorTelemetry && options.cursorTelemetry.length > 0) {
+		const threshold = 0.08;
+		let t_move: number | null = null;
+		
+		// Optimized lookup: binary search to find the start index in telemetry
+		let low = 0;
+		let high = options.cursorTelemetry.length - 1;
+		while (low <= high) {
+			const mid = (low + high) >> 1;
+			if (options.cursorTelemetry[mid].timeMs < zoomOutStart) {
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		
+		for (let i = low; i < options.cursorTelemetry.length; i++) {
+			const sample = options.cursorTelemetry[i];
+			if (sample.timeMs > adjustedTimeMs) {
+				break;
+			}
+			const dist = Math.hypot(sample.cx - region.focus.cx, sample.cy - region.focus.cy);
+			if (dist >= threshold) {
+				t_move = sample.timeMs;
+				break;
+			}
+		}
+		
+		if (t_move === null) {
+			return 1; // Keep zoom active
+		} else {
+			actualZoomOutStart = t_move;
+		}
+	}
+
+	const progress = clamp01((adjustedTimeMs - actualZoomOutStart) / zoomOutDurationMs);
+	if (progress >= 1) {
+		return 0;
+	}
 	return 1 - easeOutZoom(progress);
 }
 
@@ -75,7 +115,7 @@ function getResolvedFocus(region: ZoomRegion, zoomScale: number): ZoomFocus {
 	return clampFocusToScale(region.focus, zoomScale);
 }
 
-function getConnectedRegionPairs(regions: ZoomRegion[]) {
+function getConnectedRegionPairs(regions: ZoomRegion[], gapLimit: number, panDuration: number) {
 	const sortedRegions = [...regions].sort((a, b) => a.startMs - b.startMs);
 	const pairs: ConnectedRegionPair[] = [];
 
@@ -84,7 +124,7 @@ function getConnectedRegionPairs(regions: ZoomRegion[]) {
 		const nextRegion = sortedRegions[index + 1];
 		const gapMs = nextRegion.startMs - currentRegion.endMs;
 
-		if (gapMs > CHAINED_ZOOM_PAN_GAP_MS) {
+		if (gapMs > gapLimit) {
 			continue;
 		}
 
@@ -93,7 +133,7 @@ function getConnectedRegionPairs(regions: ZoomRegion[]) {
 			nextRegion,
 			transitionStart: currentRegion.endMs + ZOOM_ANIMATION_LEAD_MS,
 			transitionEnd:
-				currentRegion.endMs + ZOOM_ANIMATION_LEAD_MS + CONNECTED_ZOOM_PAN_DURATION_MS,
+				currentRegion.endMs + ZOOM_ANIMATION_LEAD_MS + panDuration,
 		});
 	}
 
@@ -194,7 +234,9 @@ export function findDominantRegion(
 	blendedScale: number | null;
 	transition: ConnectedPanTransition | null;
 } {
-	const connectedPairs = options.connectZooms ? getConnectedRegionPairs(regions) : [];
+	const gapLimit = options.connectedZoomGapMs ?? CHAINED_ZOOM_PAN_GAP_MS;
+	const panDuration = options.connectedZoomDurationMs ?? CONNECTED_ZOOM_PAN_DURATION_MS;
+	const connectedPairs = options.connectZooms ? getConnectedRegionPairs(regions, gapLimit, panDuration) : [];
 
 	if (options.connectZooms) {
 		const connectedHold = getConnectedRegionHold(timeMs, connectedPairs);
@@ -207,4 +249,26 @@ export function findDominantRegion(
 	return activeRegion
 		? { ...activeRegion, transition: null }
 		: { region: null, strength: 0, blendedScale: null, transition: null };
+}
+
+export function getCursorPositionAtTime(
+	telemetry: CursorTelemetryPoint[] | undefined,
+	timeMs: number,
+	fallback: { cx: number; cy: number }
+): { cx: number; cy: number } {
+	if (!telemetry || telemetry.length === 0) return fallback;
+	
+	let low = 0;
+	let high = telemetry.length - 1;
+	while (low <= high) {
+		const mid = (low + high) >> 1;
+		if (telemetry[mid].timeMs < timeMs) {
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+	
+	const idx = Math.max(0, Math.min(low, telemetry.length - 1));
+	return { cx: telemetry[idx].cx, cy: telemetry[idx].cy };
 }

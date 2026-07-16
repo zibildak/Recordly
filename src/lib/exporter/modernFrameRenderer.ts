@@ -1,6 +1,7 @@
 import { Application, BlurFilter, Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { ZoomBlurFilter } from "pixi-filters/zoom-blur";
+import { PerspectiveFilter } from "@/components/video-editor/videoPlayback/PerspectiveFilter";
 import { buildActiveCaptionLayout } from "@/components/video-editor/captionLayout";
 import {
 	CAPTION_FONT_WEIGHT,
@@ -82,10 +83,6 @@ import {
 	clampMediaTimeToDuration,
 	getEffectiveVideoStreamDurationSeconds,
 } from "@/lib/mediaTiming";
-import {
-	destroyPixiApplication,
-	initializePixiApplicationWithTimeout,
-} from "@/lib/pixiApplicationLifecycle";
 import { isVideoWallpaperSource } from "@/lib/wallpapers";
 import {
 	type AnnotationRenderAssets,
@@ -288,6 +285,30 @@ function isKnownRendererUnavailableError(error: unknown): boolean {
 	);
 }
 
+type PixiInitOptions = Parameters<Application["init"]>[0];
+
+async function initApplicationWithTimeout(
+	app: Application,
+	options: PixiInitOptions,
+	backend: ExportRenderBackend,
+): Promise<void> {
+	const timeoutErrorMessage = `Initialization timed out after ${PIXI_RENDERER_INIT_TIMEOUT_MS}ms for ${backend} renderer`;
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new Error(timeoutErrorMessage));
+		}, PIXI_RENDERER_INIT_TIMEOUT_MS);
+	});
+
+	try {
+		await Promise.race([app.init(options), timeoutPromise]);
+	} finally {
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+	}
+}
+
 interface RenderSnapshot {
 	timeMs: number;
 	cursorTimeMs: number;
@@ -403,6 +424,7 @@ export class FrameRenderer {
 	private webcamMaskGraphics: Graphics | null = null;
 	private zoomBlurFilter: ZoomBlurFilter | null = null;
 	private motionBlurFilter: MotionBlurFilter | null = null;
+	private perspectiveFilter: PerspectiveFilter | null = null;
 	private backgroundBlurFilter: BlurFilter | null = null;
 	private annotationAssets: AnnotationRenderAssets | null = null;
 	private annotationScaleFactor = 1;
@@ -635,6 +657,8 @@ export class FrameRenderer {
 		await this.setupAnnotationLayer();
 		this.setupCaptionResources();
 
+		this.perspectiveFilter = new PerspectiveFilter();
+
 		if (this.shouldUseZoomMotionBlur()) {
 			this.zoomBlurFilter = new ZoomBlurFilter({
 				strength: 0,
@@ -700,13 +724,12 @@ export class FrameRenderer {
 			const app = new Application();
 			const initStarted = typeof performance === "undefined" ? Date.now() : performance.now();
 			try {
-				await initializePixiApplicationWithTimeout(
+				await initApplicationWithTimeout(
 					app,
 					{
 						...baseOptions,
 						preference: backend,
 					},
-					PIXI_RENDERER_INIT_TIMEOUT_MS,
 					backend,
 				);
 				const elapsed = Math.round(
@@ -735,7 +758,7 @@ export class FrameRenderer {
 					`[FrameRenderer] ${backend} export renderer unavailable (${rendererMessage}) after ${elapsed}ms; trying next backend:`,
 					error,
 				);
-				destroyPixiApplication(app, `${backend} export renderer initialization`);
+				app.destroy(true);
 			}
 		}
 
@@ -3709,6 +3732,9 @@ export class FrameRenderer {
 				connectZooms: this.config.connectZooms,
 				zoomInDurationMs: this.config.zoomInDurationMs,
 				zoomOutDurationMs: this.config.zoomOutDurationMs,
+				connectedZoomGapMs: this.config.connectedZoomGapMs,
+				connectedZoomDurationMs: this.config.connectedZoomDurationMs,
+				cursorTelemetry: this.config.cursorTelemetry,
 			},
 		);
 
@@ -3800,6 +3826,33 @@ export class FrameRenderer {
 				deltaMs,
 				zoomSpringConfig,
 			);
+		}
+
+		// Update 3D Perspective Tilt Filter if enabled
+		const perspectiveFilter = this.perspectiveFilter;
+		if (perspectiveFilter && this.videoEffectsContainer) {
+			if (region && region.tilt3D && strength > 0) {
+				const angle = region.tilt3DAngle ?? 12;
+				perspectiveFilter.update(targetFocus, targetProgress, angle);
+
+				const activeFilters = [];
+				if (this.shouldUseZoomMotionBlur()) {
+					if (this.motionBlurFilter) activeFilters.push(this.motionBlurFilter);
+					if (this.zoomBlurFilter) activeFilters.push(this.zoomBlurFilter);
+				}
+				activeFilters.push(perspectiveFilter);
+				this.videoEffectsContainer.filters = activeFilters;
+			} else {
+				perspectiveFilter.update(null, 0);
+				if (this.shouldUseZoomMotionBlur()) {
+					const activeFilters = [];
+					if (this.motionBlurFilter) activeFilters.push(this.motionBlurFilter);
+					if (this.zoomBlurFilter) activeFilters.push(this.zoomBlurFilter);
+					this.videoEffectsContainer.filters = activeFilters;
+				} else {
+					this.videoEffectsContainer.filters = null;
+				}
+			}
 		}
 
 		return Math.max(
@@ -3900,9 +3953,15 @@ export class FrameRenderer {
 		}
 		this.zoomBlurFilter?.destroy();
 		this.motionBlurFilter?.destroy();
+		this.perspectiveFilter?.destroy();
+		this.perspectiveFilter = null;
 		this.backgroundBlurFilter?.destroy();
 
-		destroyPixiApplication(this.app, "Lightning export renderer");
+		this.app?.destroy(true, {
+			children: true,
+			texture: false,
+			textureSource: false,
+		});
 
 		for (const texture of texturesToDestroy) {
 			try {

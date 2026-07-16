@@ -45,8 +45,6 @@ import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
-import CaptionListPanel from "./CaptionListPanel";
-import type { CaptionRetimeSpan } from "./captionOps";
 import {
 	CURSOR_MOTION_PRESETS,
 	type CursorMotionPresetId,
@@ -181,10 +179,9 @@ function isHexWallpaper(value: string): boolean {
 
 function hexToRgba(hex: string, alpha: number) {
 	const normalized = isHexWallpaper(hex) ? hex : DEFAULT_CURSOR_CLICK_EFFECT_COLOR;
-	const value =
-		normalized.length === 4
-			? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
-			: normalized;
+	const value = normalized.length === 4
+		? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+		: normalized;
 	const color = Number.parseInt(value.slice(1), 16);
 	const red = (color >> 16) & 255;
 	const green = (color >> 8) & 255;
@@ -532,23 +529,8 @@ function CursorClickEffectPreview({
 					viewBox="0 0 40 40"
 					aria-hidden="true"
 				>
-					<circle
-						cx="20"
-						cy="20"
-						r="11.5"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1.8"
-						opacity="0.75"
-					/>
-					<path
-						d="M12.5 27.5 27.5 12.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeWidth="2.2"
-						opacity="0.92"
-					/>
+					<circle cx="20" cy="20" r="11.5" fill="none" stroke="currentColor" strokeWidth="1.8" opacity="0.75" />
+					<path d="M12.5 27.5 27.5 12.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2.2" opacity="0.92" />
 				</svg>
 			) : null}
 			{effect === "ripple" ? (
@@ -589,17 +571,13 @@ function CursorClickEffectPreview({
 					viewBox="0 0 48 48"
 					aria-hidden="true"
 				>
-					<g fill="none" stroke="currentColor">
+					<g
+						fill="none"
+						stroke="currentColor"
+					>
 						<circle cx="24" cy="24" r="9" strokeWidth="1.8" opacity="0.72" />
 						<circle cx="24" cy="24" r="14.5" strokeWidth="1.5" opacity="0.4" />
-						<circle
-							cx="24"
-							cy="24"
-							r="4.25"
-							fill="currentColor"
-							opacity="0.22"
-							stroke="none"
-						/>
+						<circle cx="24" cy="24" r="4.25" fill="currentColor" opacity="0.22" stroke="none" />
 					</g>
 				</svg>
 			) : null}
@@ -682,10 +660,7 @@ function CursorClickEffectCards({
 						>
 							<div className="flex h-full flex-col items-center justify-between gap-3">
 								<div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[8px] px-2 py-1.5">
-									<CursorClickEffectPreview
-										effect={effect.id}
-										color={effectColor}
-									/>
+									<CursorClickEffectPreview effect={effect.id} color={effectColor} />
 								</div>
 							</div>
 						</ToggleGroupItem>
@@ -706,6 +681,10 @@ interface SettingsPanelProps {
 	selectedZoomId?: string | null;
 	selectedZoomMode?: ZoomMode | null;
 	onZoomModeChange?: (mode: ZoomMode) => void;
+	selectedZoomTilt3D?: boolean | null;
+	onZoomTilt3DChange?: (enabled: boolean) => void;
+	selectedZoomTiltAngle?: number | null;
+	onZoomTiltAngleChange?: (angle: number) => void;
 	onZoomDelete?: (id: string) => void;
 	selectedClipId?: string | null;
 	selectedClipSpeed?: number | null;
@@ -840,14 +819,6 @@ interface SettingsPanelProps {
 	onClearAutoCaptions?: () => void;
 	onDownloadWhisperSmallModel?: () => void;
 	onDeleteWhisperSmallModel?: () => void;
-	captionCurrentTimeMs?: number;
-	selectedCaptionId?: string | null;
-	onBeginCaptionEdit?: (id: string) => void;
-	onCaptionTextEdit?: (id: string, text: string) => void;
-	onCaptionRetime?: (id: string, span: CaptionRetimeSpan) => void;
-	onCaptionSplit?: (id: string, atMs: number) => void;
-	onCaptionMerge?: (idA: string, idB: string) => void;
-	onCaptionDelete?: (id: string) => void;
 	nativeCaptureUnavailableSession?: boolean;
 	onOpenNativeCaptureUnavailableModal?: () => void;
 }
@@ -916,6 +887,7 @@ const APP_LANGUAGE_LABELS: Record<AppLocale, string> = {
 	"pt-BR": "Português",
 	"zh-CN": "簡體中文",
 	"zh-TW": "繁體中文",
+	tr: "Türkçe",
 };
 
 function loadPreviewImage(url: string) {
@@ -1168,6 +1140,10 @@ export function SettingsPanel({
 	selectedZoomId,
 	selectedZoomMode,
 	onZoomModeChange,
+	selectedZoomTilt3D = false,
+	onZoomTilt3DChange,
+	selectedZoomTiltAngle = 12,
+	onZoomTiltAngleChange,
 	onZoomDelete,
 	selectedClipId,
 	selectedClipSpeed,
@@ -1282,14 +1258,6 @@ export function SettingsPanel({
 	onClearAutoCaptions,
 	onDownloadWhisperSmallModel,
 	onDeleteWhisperSmallModel,
-	captionCurrentTimeMs = 0,
-	selectedCaptionId = null,
-	onBeginCaptionEdit,
-	onCaptionTextEdit,
-	onCaptionRetime,
-	onCaptionSplit,
-	onCaptionMerge,
-	onCaptionDelete,
 	nativeCaptureUnavailableSession = false,
 	onOpenNativeCaptureUnavailableModal,
 }: SettingsPanelProps) {
@@ -2778,22 +2746,6 @@ export function SettingsPanel({
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="flex items-center justify-between gap-3 rounded-lg bg-foreground/[0.03] px-2.5 py-2">
-					<div className="text-[10px] text-muted-foreground">
-						{tSettings("captions.timelineQuickAdd", "Hover to add on timeline")}
-					</div>
-					<Switch
-						checked={autoCaptionSettings.timelineQuickAdd}
-						onCheckedChange={(timelineQuickAdd) =>
-							updateAutoCaptionSettings({ timelineQuickAdd })
-						}
-						aria-label={tSettings(
-							"captions.timelineQuickAdd",
-							"Hover to add on timeline",
-						)}
-						className="data-[state=checked]:bg-[#2563EB] scale-75"
-					/>
-				</div>
 				<label className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-2">
 					<span className="text-[10px] text-muted-foreground">
 						{tSettings("captions.textColor", "Text color")}
@@ -3352,6 +3304,31 @@ export function SettingsPanel({
 								);
 							})}
 						</div>
+						<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5 mt-2">
+							<span className="text-[10px] text-muted-foreground">
+								{tSettings("zoom.tilt3D", "3D Perspektif Zoom")}
+							</span>
+							<Switch
+								checked={selectedZoomTilt3D || false}
+								onCheckedChange={(v) => onZoomTilt3DChange?.(v)}
+								className="data-[state=checked]:bg-[#2563EB] scale-75"
+							/>
+						</div>
+						{selectedZoomTilt3D && (
+							<div className="mt-2">
+								<SliderControl
+									label={tSettings("zoom.tilt3DAngle", "Eğim Açısı")}
+									value={selectedZoomTiltAngle ?? 12}
+									defaultValue={12}
+									min={0}
+									max={45}
+									step={1}
+									onChange={(v) => onZoomTiltAngleChange?.(v)}
+									formatValue={(v) => `${Math.round(v)}°`}
+									parseInput={(text) => parseFloat(text.replace(/°$/, ""))}
+								/>
+							</div>
+						)}
 						<div className="h-px bg-foreground/[0.06] my-1" />
 					</>
 				)}
@@ -3606,34 +3583,6 @@ export function SettingsPanel({
 			</section>
 		);
 
-		const captionSectionContent = (
-			<section className="flex flex-col gap-2">
-				<SectionLabel>{tSettings("sections.caption", "Caption")}</SectionLabel>
-				{selectedCaptionId !== null ? (
-					<CaptionListPanel
-						cues={autoCaptions}
-						selectedCaptionId={selectedCaptionId}
-						currentTimeMs={captionCurrentTimeMs}
-						onBeginCaptionEdit={(id) => onBeginCaptionEdit?.(id)}
-						onCaptionTextEdit={(id, text) => onCaptionTextEdit?.(id, text)}
-						onCaptionRetime={(id, span) => onCaptionRetime?.(id, span)}
-						onCaptionSplit={(id, atMs) => onCaptionSplit?.(id, atMs)}
-						onCaptionMerge={(idA, idB) => onCaptionMerge?.(idA, idB)}
-						onCaptionDelete={(id) => onCaptionDelete?.(id)}
-					/>
-				) : (
-					<div className="rounded-lg bg-foreground/[0.03] px-2.5 py-6 text-center">
-						<p className="text-[11px] text-muted-foreground">
-							{tSettings(
-								"captions.selectOnTimeline",
-								"Select a caption on the timeline to edit it.",
-							)}
-						</p>
-					</div>
-				)}
-			</section>
-		);
-
 		switch (activeEffectSection) {
 			case "settings":
 				return settingsSectionContent;
@@ -3651,8 +3600,6 @@ export function SettingsPanel({
 				return sceneSectionContent;
 			case "captions":
 				return captionsSectionContent;
-			case "caption":
-				return captionSectionContent;
 			case "cursor":
 				return (
 					<section className="flex flex-col gap-2">
@@ -3781,15 +3728,12 @@ export function SettingsPanel({
 										<div className="flex flex-wrap gap-1.5">
 											{CLICK_EFFECT_COLOR_OPTIONS.map((color) => {
 												const isSelected =
-													cursorClickEffectColor.toLowerCase() ===
-													color.toLowerCase();
+													cursorClickEffectColor.toLowerCase() === color.toLowerCase();
 												return (
 													<button
 														key={color}
 														type="button"
-														onClick={() =>
-															onCursorClickEffectColorChange?.(color)
-														}
+														onClick={() => onCursorClickEffectColorChange?.(color)}
 														className={cn(
 															"h-6 w-6 rounded-[8px] border transition-transform hover:scale-[1.04]",
 															isSelected
@@ -3803,9 +3747,7 @@ export function SettingsPanel({
 											})}
 											<button
 												type="button"
-												onClick={() =>
-													cursorClickEffectColorInputRef.current?.click()
-												}
+												onClick={() => cursorClickEffectColorInputRef.current?.click()}
 												className="relative h-6 w-10 overflow-hidden rounded-[8px] border border-foreground/10 text-[8px] font-semibold uppercase tracking-[0.18em] text-foreground"
 												style={{
 													background: `linear-gradient(135deg, ${cursorClickEffectColor} 0%, ${cursorClickEffectColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,

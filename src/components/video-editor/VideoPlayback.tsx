@@ -18,10 +18,6 @@ import {
 	getMediaSyncPlaybackRate,
 } from "@/lib/mediaTiming";
 import {
-	destroyPixiApplication,
-	initializePixiApplicationWithTimeout,
-} from "@/lib/pixiApplicationLifecycle";
-import {
 	DEFAULT_WALLPAPER_PATH,
 	DEFAULT_WALLPAPER_RELATIVE_PATH,
 	isVideoWallpaperSource,
@@ -176,7 +172,10 @@ import {
 } from "./videoPlayback/layoutUtils";
 import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
-import { getWebcamMediaTargetTimeSeconds, shouldSeekWebcamMedia } from "./videoPlayback/webcamSync";
+import {
+	getWebcamMediaTargetTimeSeconds,
+	shouldSeekWebcamMedia,
+} from "./videoPlayback/webcamSync";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
 import {
 	applyZoomTransform,
@@ -184,6 +183,7 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "./videoPlayback/zoomTransform";
+import { PerspectiveFilter } from "./videoPlayback/PerspectiveFilter";
 import {
 	getCropMatchedWebcamHeightPercent,
 	getWebcamCropSourceRect,
@@ -261,6 +261,30 @@ function isRendererUnavailableError(error: unknown): boolean {
 function summarizeRendererAttempts(attempts: readonly PixiRendererAttempt[]): string {
 	const details = attempts.map((attempt) => `${attempt.backend}: ${attempt.message}`).join(" | ");
 	return `No supported Pixi preview renderer was available. Attempted: ${details}`;
+}
+
+type PixiInitOptions = Parameters<Application["init"]>[0];
+
+async function initApplicationWithTimeout(
+	app: Application,
+	options: PixiInitOptions,
+	backend: PixiPreviewBackend,
+): Promise<void> {
+	const timeoutErrorMessage = `Initialization timed out after ${PIXI_RENDERER_INIT_TIMEOUT_MS}ms for ${backend} renderer`;
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new Error(timeoutErrorMessage));
+		}, PIXI_RENDERER_INIT_TIMEOUT_MS);
+	});
+
+	try {
+		await Promise.race([app.init(options), timeoutPromise]);
+	} finally {
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+	}
 }
 
 function getCursorPositionAtTime(
@@ -401,7 +425,6 @@ export interface VideoPlaybackRef {
 	play: () => Promise<void>;
 	pause: () => void;
 	refreshFrame: () => Promise<void>;
-	cancelCaptionEdit: () => void;
 }
 
 const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
@@ -488,6 +511,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const cursorContainerRef = useRef<Container | null>(null);
 		const zoomBlurFilterRef = useRef<ZoomBlurFilter | null>(null);
 		const motionBlurFilterRef = useRef<MotionBlurFilter | null>(null);
+		const perspectiveFilterRef = useRef<PerspectiveFilter | null>(null);
 		const cameraContainerRef = useRef<Container | null>(null);
 		const timeUpdateAnimationRef = useRef<number | null>(null);
 		const [pixiReady, setPixiReady] = useState(false);
@@ -660,7 +684,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					const initStarted =
 						typeof performance === "undefined" ? Date.now() : performance.now();
 					try {
-						await initializePixiApplicationWithTimeout(
+						await initApplicationWithTimeout(
 							rendererApp,
 							{
 								width: container.clientWidth,
@@ -674,7 +698,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								autoStart: true,
 								sharedTicker: false,
 							},
-							PIXI_RENDERER_INIT_TIMEOUT_MS,
 							backend,
 						);
 						const elapsed = Math.round(
@@ -703,10 +726,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							`[VideoPlayback] Failed to init ${backend} renderer (${statusMessage}) after ${elapsed}ms; trying fallback.`,
 							error,
 						);
-						destroyPixiApplication(
-							rendererApp,
-							`${backend} preview renderer initialization`,
-						);
+						rendererApp.destroy(true);
 					}
 				}
 
@@ -1400,7 +1420,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 				video.pause();
 			},
-			cancelCaptionEdit,
 			refreshFrame: async () => {
 				const video = videoRef.current;
 				if (!video || Number.isNaN(video.currentTime)) {
@@ -2110,7 +2129,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				app.ticker.maxFPS = 60;
 
 				if (!mounted) {
-					destroyPixiApplication(app, "unmounted preview renderer");
+					app.destroy(true, {
+						children: true,
+						texture: false,
+						textureSource: false,
+					});
 					return;
 				}
 
@@ -2128,10 +2151,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				videoEffectsContainerRef.current = videoEffectsContainer;
 				zoomBlurFilterRef.current = new ZoomBlurFilter({ strength: 0, maxKernelSize: 13 });
 				motionBlurFilterRef.current = new MotionBlurFilter([0, 0], 5, 0);
+				perspectiveFilterRef.current = new PerspectiveFilter();
 				videoEffectsContainer.filters = [
 					motionBlurFilterRef.current,
 					zoomBlurFilterRef.current,
-				];
+					perspectiveFilterRef.current,
+				].filter(Boolean);
 				cameraContainer.addChild(videoEffectsContainer);
 				syncPreviewMotionBlurQuality();
 
@@ -2204,9 +2229,17 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 				zoomBlurFilterRef.current?.destroy();
 				motionBlurFilterRef.current?.destroy();
+				perspectiveFilterRef.current?.destroy();
 				zoomBlurFilterRef.current = null;
 				motionBlurFilterRef.current = null;
-				destroyPixiApplication(app, "preview renderer");
+				perspectiveFilterRef.current = null;
+				if (app && app.renderer) {
+					app.destroy(true, {
+						children: true,
+						texture: false,
+						textureSource: false,
+					});
+				}
 				appRef.current = null;
 				cameraContainerRef.current = null;
 				videoEffectsContainerRef.current = null;
@@ -2381,13 +2414,18 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					return;
 				}
 
+				const playbackTimeMs = currentTimeRef.current;
+
 				const { region, strength, blendedScale } = findDominantRegion(
 					zoomRegionsRef.current,
-					currentTimeRef.current,
+					playbackTimeMs,
 					{
 						connectZooms: connectZoomsRef.current,
 						zoomInDurationMs: zoomInDurationMsRef.current,
 						zoomOutDurationMs: zoomOutDurationMsRef.current,
+						connectedZoomGapMs: connectedZoomGapMsRef.current,
+						connectedZoomDurationMs: connectedZoomDurationMsRef.current,
+						cursorTelemetry: cursorTelemetryRef.current,
 					},
 				);
 
@@ -2500,6 +2538,39 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 
 				applyTransform({ scale: appliedScale, x: appliedX, y: appliedY }, targetFocus);
+
+				// Update 3D Perspective Tilt Filter if enabled
+				const perspectiveFilter = perspectiveFilterRef.current;
+				if (perspectiveFilter) {
+					const videoEffectsContainer = videoEffectsContainerRef.current;
+					const motionBlurFilter = motionBlurFilterRef.current;
+					const zoomBlurFilter = zoomBlurFilterRef.current;
+					
+					if (videoEffectsContainer) {
+						if (region && region.tilt3D && strength > 0 && !shouldShowUnzoomedView) {
+							const angle = region.tilt3DAngle ?? 12;
+							perspectiveFilter.update(targetFocus, targetProgress, angle);
+							
+							const activeFilters = [];
+							if ((zoomMotionBlurRef.current ?? 0) > 0) {
+								if (motionBlurFilter) activeFilters.push(motionBlurFilter);
+								if (zoomBlurFilter) activeFilters.push(zoomBlurFilter);
+							}
+							activeFilters.push(perspectiveFilter);
+							videoEffectsContainer.filters = activeFilters;
+						} else {
+							perspectiveFilter.update(null, 0);
+							if ((zoomMotionBlurRef.current ?? 0) > 0) {
+								const activeFilters = [];
+								if (motionBlurFilter) activeFilters.push(motionBlurFilter);
+								if (zoomBlurFilter) activeFilters.push(zoomBlurFilter);
+								videoEffectsContainer.filters = activeFilters;
+							} else {
+								videoEffectsContainer.filters = null;
+							}
+						}
+					}
+				}
 
 				applyWebcamBubbleLayout(animationStateRef.current.appliedScale || 1);
 
@@ -3089,14 +3160,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								</div>
 							</div>
 						) : null}
-						{activeCaptionLayout && autoCaptionSettings ? (
-							<div
-								className="absolute inset-x-0 flex justify-center"
-								style={{
-									bottom: `${autoCaptionSettings.bottomOffset}%`,
-									pointerEvents: onEditAutoCaption ? "auto" : "none",
-								}}
-							>
+								{activeCaptionLayout && autoCaptionSettings ? (
+									<div
+										className="absolute inset-x-0 flex justify-center"
+										style={{
+											bottom: `${autoCaptionSettings.bottomOffset}%`,
+											pointerEvents: onEditAutoCaption ? "auto" : "none",
+										}}
+									>
 								<div
 									style={{
 										maxWidth: `${autoCaptionSettings.maxWidth}%`,
@@ -3108,38 +3179,32 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								>
 									<div
 										ref={captionBoxRef}
-										role={
-											onEditAutoCaption && !isCaptionEditing
-												? "button"
-												: undefined
-										}
-										tabIndex={
-											onEditAutoCaption && !isCaptionEditing ? 0 : undefined
-										}
-										aria-label={
-											onEditAutoCaption && !isCaptionEditing
-												? "Edit current caption"
-												: undefined
-										}
-										onClick={(event) => {
-											event.stopPropagation();
-											if (!isCaptionEditing) {
-												beginCaptionEdit();
-											}
-										}}
-										onPointerDown={(event) => {
-											event.stopPropagation();
-										}}
-										onKeyDown={(event) => {
-											if (!onEditAutoCaption || isCaptionEditing) {
-												return;
-											}
+												role={
+													onEditAutoCaption && !isCaptionEditing ? "button" : undefined
+												}
+												tabIndex={onEditAutoCaption && !isCaptionEditing ? 0 : undefined}
+												aria-label={
+													onEditAutoCaption && !isCaptionEditing ? "Edit current caption" : undefined
+												}
+												onClick={(event) => {
+													event.stopPropagation();
+													if (!isCaptionEditing) {
+														beginCaptionEdit();
+													}
+												}}
+												onPointerDown={(event) => {
+													event.stopPropagation();
+												}}
+												onKeyDown={(event) => {
+													if (!onEditAutoCaption || isCaptionEditing) {
+														return;
+													}
 
-											if (event.key === "Enter" || event.key === " ") {
-												event.preventDefault();
-												beginCaptionEdit();
-											}
-										}}
+													if (event.key === "Enter" || event.key === " ") {
+														event.preventDefault();
+														beginCaptionEdit();
+													}
+												}}
 										style={{
 											backgroundColor: `rgba(0, 0, 0, ${autoCaptionSettings.backgroundOpacity})`,
 											fontFamily: getDefaultCaptionFontFamily(),
@@ -3177,138 +3242,122 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 												),
 											)}px`,
 											boxSizing: "border-box",
-											cursor:
-												onEditAutoCaption && !isCaptionEditing
-													? "text"
-													: undefined,
-											pointerEvents: onEditAutoCaption ? "auto" : undefined,
+													cursor:
+														onEditAutoCaption && !isCaptionEditing ? "text" : undefined,
+													pointerEvents: onEditAutoCaption ? "auto" : undefined,
 										}}
 									>
-										{captionEditSession ? (
-											<textarea
-												ref={captionEditInputRef}
-												value={captionEditSession.draft}
-												onChange={(event) => {
-													const draft = event.target.value;
-													setCaptionEditSession((session) => {
-														const nextSession = session
-															? { ...session, draft }
-															: session;
-														captionEditSessionRef.current = nextSession;
-														return nextSession;
-													});
-												}}
-												onBlur={commitCaptionEdit}
-												onClick={(event) => event.stopPropagation()}
-												onKeyDown={(event) => {
-													if (event.key === "Escape") {
-														event.preventDefault();
-														cancelCaptionEdit();
-														return;
-													}
+												{captionEditSession ? (
+													<textarea
+														ref={captionEditInputRef}
+														value={captionEditSession.draft}
+														onChange={(event) => {
+															const draft = event.target.value;
+															setCaptionEditSession((session) => {
+																const nextSession = session ? { ...session, draft } : session;
+																captionEditSessionRef.current = nextSession;
+																return nextSession;
+															});
+														}}
+														onBlur={commitCaptionEdit}
+														onClick={(event) => event.stopPropagation()}
+														onKeyDown={(event) => {
+															if (event.key === "Escape") {
+																event.preventDefault();
+																cancelCaptionEdit();
+																return;
+															}
 
-													if (event.key === "Enter" && !event.shiftKey) {
-														event.preventDefault();
-														event.currentTarget.blur();
-													}
-												}}
-												rows={Math.max(
-													1,
-													activeCaptionLayout.visibleLines.length,
-												)}
-												aria-label="Edit current caption"
-												style={{
-													display: "block",
-													width: `${
-														captionEditTextMetrics?.widthPx ??
-														Math.max(
-															48,
-															activeCaptionLayout.visibleLines.reduce(
-																(width, line) =>
-																	Math.max(width, line.width),
-																0,
-															),
-														)
-													}px`,
-													maxWidth: `${
-														captionEditTextMetrics?.maxTextWidthPx ??
-														getCaptionTextMaxWidth(
-															overlayRef.current?.clientWidth || 960,
-															autoCaptionSettings.maxWidth,
-															getCaptionScaledFontSize(
-																autoCaptionSettings.fontSize,
-																overlayRef.current?.clientWidth ||
-																	960,
-																autoCaptionSettings.maxWidth,
-															),
-														)
-													}px`,
-													minHeight: `${
-														Math.max(
-															1,
-															activeCaptionLayout.visibleLines.length,
-														) *
-														(
-															captionEditTextMetrics?.fontSize ??
-																getCaptionScaledFontSize(
-																	autoCaptionSettings.fontSize,
-																	overlayRef.current
-																		?.clientWidth || 960,
-																	autoCaptionSettings.maxWidth,
+															if (event.key === "Enter" && !event.shiftKey) {
+																event.preventDefault();
+																event.currentTarget.blur();
+															}
+														}}
+														rows={Math.max(1, activeCaptionLayout.visibleLines.length)}
+														aria-label="Edit current caption"
+														style={{
+															display: "block",
+															width: `${
+																captionEditTextMetrics?.widthPx ??
+																Math.max(
+																	48,
+																	activeCaptionLayout.visibleLines.reduce(
+																		(width, line) => Math.max(width, line.width),
+																		0,
+																	),
 																)
-														) *
-														CAPTION_LINE_HEIGHT
-													}px`,
-													resize: "none",
-													border: "0",
-													outline: "0",
-													padding: "0",
-													margin: "0",
-													overflow: "hidden",
-													background: "transparent",
-													color: autoCaptionSettings.textColor,
-													font: "inherit",
-													lineHeight: "inherit",
-													textAlign: "center",
+															}px`,
+															maxWidth: `${
+																captionEditTextMetrics?.maxTextWidthPx ??
+																getCaptionTextMaxWidth(
+																	overlayRef.current?.clientWidth || 960,
+																	autoCaptionSettings.maxWidth,
+																	getCaptionScaledFontSize(
+																		autoCaptionSettings.fontSize,
+																		overlayRef.current?.clientWidth || 960,
+																		autoCaptionSettings.maxWidth,
+																	),
+																)
+															}px`,
+															minHeight: `${
+																Math.max(1, activeCaptionLayout.visibleLines.length) *
+																(captionEditTextMetrics?.fontSize ??
+																	getCaptionScaledFontSize(
+																		autoCaptionSettings.fontSize,
+																		overlayRef.current?.clientWidth || 960,
+																		autoCaptionSettings.maxWidth,
+																	)) *
+																CAPTION_LINE_HEIGHT
+															}px`,
+															resize: "none",
+															border: "0",
+															outline: "0",
+															padding: "0",
+															margin: "0",
+															overflow: "hidden",
+															background: "transparent",
+															color: autoCaptionSettings.textColor,
+															font: "inherit",
+															lineHeight: "inherit",
+															textAlign: "center",
+														}}
+													/>
+												) : (
+													activeCaptionLayout.visibleLines.map((line) => (
+											<div
+												key={`${activeCaptionLayout.blockKey}-${line.startWordIndex}`}
+												style={{
+													display: "flex",
+													justifyContent: "center",
+													flexWrap: "nowrap",
+													whiteSpace: "nowrap",
 												}}
-											/>
-										) : (
-											activeCaptionLayout.visibleLines.map((line) => (
-												<div
-													key={`${activeCaptionLayout.blockKey}-${line.startWordIndex}`}
-													style={{
-														display: "flex",
-														justifyContent: "center",
-														flexWrap: "nowrap",
-														whiteSpace: "nowrap",
-													}}
-												>
-													{line.words.map((word) => {
-														const visualState =
-															getCaptionWordVisualState(
-																activeCaptionLayout.hasWordTimings,
-																word.state,
-															);
+											>
+												{line.words.map((word) => {
+													const visualState = getCaptionWordVisualState(
+														activeCaptionLayout.hasWordTimings,
+														word.state,
+													);
 
-														return (
-															<span
-																key={`${activeCaptionLayout.blockKey}-${word.index}`}
-																style={{
-																	display: "inline-block",
-																	whiteSpace: "pre",
-																	color: visualState.isInactive
-																		? autoCaptionSettings.inactiveTextColor
-																		: autoCaptionSettings.textColor,
-																	opacity: visualState.opacity,
-																}}
-															>
-																{`${word.leadingSpace ? " " : ""}${word.text}`}
-															</span>
-														);
-													})}
-												</div>
-											))
-										)}
+													return (
+														<span
+															key={`${activeCaptionLayout.blockKey}-${word.index}`}
+															style={{
+																display: "inline-block",
+																whiteSpace: "pre",
+																color: visualState.isInactive
+																	? autoCaptionSettings.inactiveTextColor
+																	: autoCaptionSettings.textColor,
+																opacity: visualState.opacity,
+															}}
+														>
+															{`${word.leadingSpace ? " " : ""}${word.text}`}
+														</span>
+													);
+												})}
+											</div>
+													))
+												)}
 									</div>
 								</div>
 							</div>
@@ -3329,44 +3378,32 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 									top: annotationRecordingRect.y || 0,
 									width:
 										annotationRecordingRect.width ||
-										overlayRef.current?.clientWidth ||
-										800,
+										(overlayRef.current?.clientWidth || 800),
 									height:
 										annotationRecordingRect.height ||
-										overlayRef.current?.clientHeight ||
-										600,
+										(overlayRef.current?.clientHeight || 600),
 								}}
 							>
 								{(() => {
-									const filtered = (annotationRegions || []).filter(
-										(annotation) => {
-											if (
-												typeof annotation.startMs !== "number" ||
-												typeof annotation.endMs !== "number"
-											)
-												return false;
+									const filtered = (annotationRegions || []).filter((annotation) => {
+										if (
+											typeof annotation.startMs !== "number" ||
+											typeof annotation.endMs !== "number"
+										)
+											return false;
 
-											if (annotation.id === selectedAnnotationId) return true;
+										if (annotation.id === selectedAnnotationId) return true;
 
-											const timeMs = Math.round(currentTime * 1000);
-											return (
-												timeMs >= annotation.startMs &&
-												timeMs <= annotation.endMs
-											);
-										},
-									);
+										const timeMs = Math.round(currentTime * 1000);
+										return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
+									});
 
-									const sorted = [...filtered].sort(
-										(a, b) => a.zIndex - b.zIndex,
-									);
+									const sorted = [...filtered].sort((a, b) => a.zIndex - b.zIndex);
 
 									const handleAnnotationClick = (clickedId: string) => {
 										if (!onSelectAnnotation) return;
 
-										if (
-											clickedId === selectedAnnotationId &&
-											sorted.length > 1
-										) {
+										if (clickedId === selectedAnnotationId && sorted.length > 1) {
 											const currentIndex = sorted.findIndex(
 												(a) => a.id === clickedId,
 											);
@@ -3384,25 +3421,21 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											isSelected={annotation.id === selectedAnnotationId}
 											containerWidth={
 												annotationRecordingRect.width ||
-												overlayRef.current?.clientWidth ||
-												800
+												(overlayRef.current?.clientWidth || 800)
 											}
 											containerHeight={
 												annotationRecordingRect.height ||
-												overlayRef.current?.clientHeight ||
-												600
+												(overlayRef.current?.clientHeight || 600)
 											}
 											recordingRect={{
 												x: 0,
 												y: 0,
 												width:
 													annotationRecordingRect.width ||
-													overlayRef.current?.clientWidth ||
-													800,
+													(overlayRef.current?.clientWidth || 800),
 												height:
 													annotationRecordingRect.height ||
-													overlayRef.current?.clientHeight ||
-													600,
+													(overlayRef.current?.clientHeight || 600),
 											}}
 											sceneTransform={{ scale: 1, x: 0, y: 0 }}
 											interactionScale={annotationSceneTransform.scale}
