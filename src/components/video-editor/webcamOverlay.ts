@@ -1,4 +1,5 @@
 import type { CropRegion, WebcamCorner, WebcamPositionPreset } from "./types";
+import { computeSplitLayout } from "./videoPlayback/layoutUtils";
 
 const MIN_WEBCAM_OVERLAY_SIZE_PX = 56;
 
@@ -89,6 +90,8 @@ export function getWebcamOverlayDimensionsPx({
 	zoomScale,
 	reactToZoom,
 	positionPreset,
+	videoWidth = 1920,
+	videoHeight = 1080,
 }: {
 	containerWidth: number;
 	containerHeight: number;
@@ -98,13 +101,20 @@ export function getWebcamOverlayDimensionsPx({
 	zoomScale: number;
 	reactToZoom: boolean;
 	positionPreset?: WebcamPositionPreset;
+	videoWidth?: number;
+	videoHeight?: number;
 }): { width: number; height: number } {
 	if (positionPreset === "split-left" || positionPreset === "split-right") {
-		const targetHeight = Math.round(containerHeight * 0.66);
-		const targetWidth = Math.round(targetHeight * (3 / 4));
+		const splitInfo = computeSplitLayout({
+			stageWidth: containerWidth,
+			stageHeight: containerHeight,
+			videoWidth,
+			videoHeight,
+			preset: positionPreset,
+		});
 		return {
-			width: Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, targetWidth),
-			height: Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, targetHeight),
+			width: splitInfo.camRect.width,
+			height: splitInfo.camRect.height,
 		};
 	}
 
@@ -139,6 +149,8 @@ export function getWebcamOverlayPosition({
 	positionX,
 	positionY,
 	legacyCorner,
+	videoWidth = 1920,
+	videoHeight = 1080,
 }: {
 	containerWidth: number;
 	containerHeight: number;
@@ -150,21 +162,24 @@ export function getWebcamOverlayPosition({
 	positionX: number;
 	positionY: number;
 	legacyCorner: WebcamCorner;
+	videoWidth?: number;
+	videoHeight?: number;
 }): { x: number; y: number } {
 	const safeMargin = Math.max(0, margin);
 	const overlayWidth = Math.max(0, width ?? size ?? 0);
 	const overlayHeight = Math.max(0, height ?? size ?? overlayWidth);
 
-	if (positionPreset === "split-left") {
+	if (positionPreset === "split-left" || positionPreset === "split-right") {
+		const splitInfo = computeSplitLayout({
+			stageWidth: containerWidth,
+			stageHeight: containerHeight,
+			videoWidth,
+			videoHeight,
+			preset: positionPreset,
+		});
 		return {
-			x: Math.round(containerWidth * 0.05),
-			y: Math.round((containerHeight - overlayHeight) / 2),
-		};
-	}
-	if (positionPreset === "split-right") {
-		return {
-			x: Math.round(containerWidth * 0.95 - overlayWidth),
-			y: Math.round((containerHeight - overlayHeight) / 2),
+			x: splitInfo.camRect.x,
+			y: splitInfo.camRect.y,
 		};
 	}
 

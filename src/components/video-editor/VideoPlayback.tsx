@@ -990,6 +990,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					return;
 				}
 
+				const videoW = videoRef.current?.videoWidth || 1920;
+				const videoH = videoRef.current?.videoHeight || 1080;
 				const scaledDimensions = getWebcamOverlayDimensionsPx({
 					containerWidth: overlay.clientWidth,
 					containerHeight: overlay.clientHeight,
@@ -999,6 +1001,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					zoomScale,
 					reactToZoom: webcamReactToZoom,
 					positionPreset: webcamPositionPreset,
+					videoWidth: videoW,
+					videoHeight: videoH,
 				});
 				const { x, y } = getWebcamOverlayPosition({
 					containerWidth: overlay.clientWidth,
@@ -1010,6 +1014,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					positionX: webcamPositionX,
 					positionY: webcamPositionY,
 					legacyCorner: webcamCorner,
+					videoWidth: videoW,
+					videoHeight: videoH,
 				});
 
 				bubble.style.display = "block";

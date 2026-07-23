@@ -38,6 +38,70 @@ export interface PaddedLayoutResult {
 	cropStartY: number;
 }
 
+export interface SplitLayoutInfo {
+	camRect: { x: number; y: number; width: number; height: number };
+	screenRect: { x: number; y: number; width: number; height: number; scale: number };
+}
+
+export function computeSplitLayout(params: {
+	stageWidth: number;
+	stageHeight: number;
+	videoWidth: number;
+	videoHeight: number;
+	preset: "split-left" | "split-right";
+}): SplitLayoutInfo {
+	const { stageWidth, stageHeight, videoWidth, videoHeight, preset } = params;
+
+	// Target height is 68% of stage height
+	let hElement = stageHeight * 0.68;
+	const wCamUnscaled = hElement * (3 / 4); // 3:4 portrait camera card
+	const videoAspect = videoWidth > 0 && videoHeight > 0 ? videoWidth / videoHeight : 16 / 9;
+	const wScreenUnscaled = hElement * videoAspect;
+
+	// Total available width for elements is 88% of stage width (saving 12% for 3 equal gaps)
+	const maxAvailWidth = stageWidth * 0.88;
+	const sumUnscaledW = wCamUnscaled + wScreenUnscaled;
+
+	let scaleFactor = 1;
+	if (sumUnscaledW > maxAvailWidth) {
+		scaleFactor = maxAvailWidth / sumUnscaledW;
+	}
+
+	hElement *= scaleFactor;
+	const wCam = wCamUnscaled * scaleFactor;
+	const wScreen = wScreenUnscaled * scaleFactor;
+
+	const gap = (stageWidth - wCam - wScreen) / 3;
+	const yPos = (stageHeight - hElement) / 2;
+
+	let camX = 0;
+	let screenX = 0;
+
+	if (preset === "split-left") {
+		camX = gap;
+		screenX = gap + wCam + gap;
+	} else {
+		screenX = gap;
+		camX = gap + wScreen + gap;
+	}
+
+	return {
+		camRect: {
+			x: Math.round(camX),
+			y: Math.round(yPos),
+			width: Math.round(wCam),
+			height: Math.round(hElement),
+		},
+		screenRect: {
+			x: Math.round(screenX),
+			y: Math.round(yPos),
+			width: Math.round(wScreen),
+			height: Math.round(hElement),
+			scale: videoWidth > 0 ? wScreen / videoWidth : 1,
+		},
+	};
+}
+
 export function computePaddedLayout(params: {
 	width: number;
 	height: number;
@@ -50,14 +114,49 @@ export function computePaddedLayout(params: {
 }): PaddedLayoutResult {
 	const { width, height, padding, frameInsets, cropRegion, videoWidth, videoHeight, webcamPositionPreset } = params;
 
+	if (webcamPositionPreset === "split-left" || webcamPositionPreset === "split-right") {
+		const splitInfo = computeSplitLayout({
+			stageWidth: width,
+			stageHeight: height,
+			videoWidth,
+			videoHeight,
+			preset: webcamPositionPreset,
+		});
+
+		const crop = cropRegion || { x: 0, y: 0, width: 1, height: 1 };
+		const scale = splitInfo.screenRect.scale;
+		const fullVideoDisplayWidth = videoWidth * scale;
+		const fullVideoDisplayHeight = videoHeight * scale;
+		const croppedDisplayWidth = splitInfo.screenRect.width;
+		const croppedDisplayHeight = splitInfo.screenRect.height;
+		const centerOffsetX = splitInfo.screenRect.x;
+		const centerOffsetY = splitInfo.screenRect.y;
+
+		const spriteX = centerOffsetX - crop.x * fullVideoDisplayWidth;
+		const spriteY = centerOffsetY - crop.y * fullVideoDisplayHeight;
+
+		return {
+			scale,
+			centerOffsetX,
+			centerOffsetY,
+			spriteX,
+			spriteY,
+			fullFrameDisplayW: croppedDisplayWidth,
+			fullFrameDisplayH: croppedDisplayHeight,
+			fullVideoDisplayWidth,
+			fullVideoDisplayHeight,
+			croppedDisplayWidth,
+			croppedDisplayHeight,
+			cropStartX: crop.x * videoWidth,
+			cropStartY: crop.y * videoHeight,
+		};
+	}
 	// Apply asymmetrical padding
 	const p =
 		typeof padding === "number"
 			? { top: padding, bottom: padding, left: padding, right: padding }
 			: padding;
 
-	// Padding is a percentage. Linked padding keeps the original 0-100 scaling
-	// behavior; advanced vertical padding gets extra range for positioning.
 	const isAdvancedPadding = typeof padding !== "number" && padding.linked === false;
 	const clampPercent = (v: number, max = 100) => Math.min(max, Math.max(0, v));
 	const leftPercent = clampPercent(p.left);
@@ -72,15 +171,7 @@ export function computePaddedLayout(params: {
 	const topPadFrac = (Math.min(topPercent, 100) / 100) * PADDING_SCALE_FACTOR;
 	const bottomPadFrac = (Math.min(bottomPercent, 100) / 100) * PADDING_SCALE_FACTOR;
 
-	let extraLeftPadFrac = 0;
-	let extraRightPadFrac = 0;
-	if (webcamPositionPreset === "split-left") {
-		extraLeftPadFrac = 0.30;
-	} else if (webcamPositionPreset === "split-right") {
-		extraRightPadFrac = 0.30;
-	}
-
-	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac - extraLeftPadFrac - extraRightPadFrac);
+	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac);
 	const availableFracH = Math.max(0, 1.0 - topPadFrac - bottomPadFrac);
 
 	const maxDisplayWidth = width * availableFracW;
@@ -110,7 +201,7 @@ export function computePaddedLayout(params: {
 	const fullFrameDisplayW = fullFrameVideoW * scale;
 	const fullFrameDisplayH = fullFrameVideoH * scale;
 
-	const availableCenterX = (leftPadFrac + extraLeftPadFrac) * width + maxDisplayWidth / 2;
+	const availableCenterX = leftPadFrac * width + maxDisplayWidth / 2;
 	const availableCenterY = isAdvancedPadding
 		? (() => {
 				const verticalTravel = Math.max(0, height - fullFrameDisplayH);
