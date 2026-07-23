@@ -41,8 +41,12 @@ export function getAssetRootPath() {
 }
 
 export function isPathInsideDirectory(candidatePath: string, directoryPath: string) {
-	const normalizedCandidatePath = normalizePath(candidatePath);
-	const normalizedDirectoryPath = normalizePath(directoryPath);
+	let normalizedCandidatePath = normalizePath(candidatePath);
+	let normalizedDirectoryPath = normalizePath(directoryPath);
+	if (process.platform === "win32") {
+		normalizedCandidatePath = normalizedCandidatePath.toLowerCase();
+		normalizedDirectoryPath = normalizedDirectoryPath.toLowerCase();
+	}
 	return (
 		normalizedCandidatePath === normalizedDirectoryPath ||
 		normalizedCandidatePath.startsWith(`${normalizedDirectoryPath}${path.sep}`)
