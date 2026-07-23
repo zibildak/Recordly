@@ -75,9 +75,9 @@ export function computePaddedLayout(params: {
 	let extraLeftPadFrac = 0;
 	let extraRightPadFrac = 0;
 	if (webcamPositionPreset === "split-left") {
-		extraLeftPadFrac = 0.28;
+		extraLeftPadFrac = 0.30;
 	} else if (webcamPositionPreset === "split-right") {
-		extraRightPadFrac = 0.28;
+		extraRightPadFrac = 0.30;
 	}
 
 	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac - extraLeftPadFrac - extraRightPadFrac);

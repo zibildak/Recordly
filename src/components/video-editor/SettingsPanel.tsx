@@ -928,11 +928,14 @@ function CameraLayoutPreviewIcon({ type, active }: { type: string; active: boole
 
 			{type === "split-left" && (
 				<>
-					<rect x="4" y="4" width="28" height="36" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
-					<path d="M 2 2 H 6 M 2 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 34 2 H 30 M 34 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 2 42 H 6 M 2 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 34 42 H 30 M 34 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					{/* Webcam Portrait Card Left */}
+					<rect x="5" y="7" width="20" height="30" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 3 5 H 7 M 3 5 V 9" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 27 5 H 23 M 27 5 V 9" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 3 39 H 7 M 3 39 V 35" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 27 39 H 23 M 27 39 V 35" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					{/* Screen Recording Window Right */}
+					<rect x="29" y="10" width="38" height="24" rx="3" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
 				</>
 			)}
 
@@ -958,11 +961,14 @@ function CameraLayoutPreviewIcon({ type, active }: { type: string; active: boole
 
 			{type === "split-right" && (
 				<>
-					<rect x="34" y="16" width="34" height="24" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
-					<path d="M 32 14 H 36 M 32 14 V 18" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 70 14 H 66 M 70 14 V 18" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 32 42 H 36 M 32 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
-					<path d="M 70 42 H 66 M 70 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					{/* Screen Recording Window Left */}
+					<rect x="5" y="10" width="38" height="24" rx="3" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+					{/* Webcam Portrait Card Right */}
+					<rect x="47" y="7" width="20" height="30" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 45 5 H 49 M 45 5 V 9" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 69 5 H 65 M 69 5 V 9" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 45 39 H 49 M 45 39 V 35" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 69 39 H 65 M 69 39 V 35" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
 				</>
 			)}
 

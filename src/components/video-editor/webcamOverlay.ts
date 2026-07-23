@@ -100,10 +100,12 @@ export function getWebcamOverlayDimensionsPx({
 	positionPreset?: WebcamPositionPreset;
 }): { width: number; height: number } {
 	if (positionPreset === "split-left" || positionPreset === "split-right") {
-		const safeMargin = Math.max(0, margin);
-		const sideWidth = Math.round(containerWidth * 0.28);
-		const sideHeight = Math.round(Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, containerHeight - safeMargin * 2));
-		return { width: sideWidth, height: sideHeight };
+		const targetHeight = Math.round(containerHeight * 0.66);
+		const targetWidth = Math.round(targetHeight * (3 / 4));
+		return {
+			width: Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, targetWidth),
+			height: Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, targetHeight),
+		};
 	}
 
 	return {
@@ -152,6 +154,20 @@ export function getWebcamOverlayPosition({
 	const safeMargin = Math.max(0, margin);
 	const overlayWidth = Math.max(0, width ?? size ?? 0);
 	const overlayHeight = Math.max(0, height ?? size ?? overlayWidth);
+
+	if (positionPreset === "split-left") {
+		return {
+			x: Math.round(containerWidth * 0.05),
+			y: Math.round((containerHeight - overlayHeight) / 2),
+		};
+	}
+	if (positionPreset === "split-right") {
+		return {
+			x: Math.round(containerWidth * 0.95 - overlayWidth),
+			y: Math.round((containerHeight - overlayHeight) / 2),
+		};
+	}
+
 	const availableWidth = Math.max(0, containerWidth - overlayWidth - safeMargin * 2);
 	const availableHeight = Math.max(0, containerHeight - overlayHeight - safeMargin * 2);
 	const presetPosition =
