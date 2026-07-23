@@ -998,6 +998,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					margin: webcamMargin,
 					zoomScale,
 					reactToZoom: webcamReactToZoom,
+					positionPreset: webcamPositionPreset,
 				});
 				const { x, y } = getWebcamOverlayPosition({
 					containerWidth: overlay.clientWidth,
@@ -1160,6 +1161,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				borderRadius,
 				padding,
 				frameInsets,
+				webcamPositionPreset,
 			});
 
 			if (result) {

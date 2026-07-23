@@ -15,10 +15,12 @@ export function getWebcamPositionForPreset(preset: WebcamPositionPreset): { x: n
 		case "top-right":
 			return { x: 1, y: 0 };
 		case "center-left":
+		case "split-left":
 			return { x: 0, y: 0.5 };
 		case "center":
 			return { x: 0.5, y: 0.5 };
 		case "center-right":
+		case "split-right":
 			return { x: 1, y: 0.5 };
 		case "bottom-left":
 			return { x: 0, y: 1 };
@@ -86,6 +88,7 @@ export function getWebcamOverlayDimensionsPx({
 	margin,
 	zoomScale,
 	reactToZoom,
+	positionPreset,
 }: {
 	containerWidth: number;
 	containerHeight: number;
@@ -94,7 +97,15 @@ export function getWebcamOverlayDimensionsPx({
 	margin: number;
 	zoomScale: number;
 	reactToZoom: boolean;
+	positionPreset?: WebcamPositionPreset;
 }): { width: number; height: number } {
+	if (positionPreset === "split-left" || positionPreset === "split-right") {
+		const safeMargin = Math.max(0, margin);
+		const sideWidth = Math.round(containerWidth * 0.28);
+		const sideHeight = Math.round(Math.max(MIN_WEBCAM_OVERLAY_SIZE_PX, containerHeight - safeMargin * 2));
+		return { width: sideWidth, height: sideHeight };
+	}
+
 	return {
 		width: getWebcamOverlaySizePx({
 			containerWidth,

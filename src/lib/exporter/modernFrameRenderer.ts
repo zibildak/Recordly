@@ -3570,6 +3570,7 @@ export class FrameRenderer {
 			cropRegion,
 			videoWidth,
 			videoHeight,
+			webcamPositionPreset: this.config.webcam?.positionPreset ?? this.config.webcam?.corner,
 		});
 
 		this.videoSprite.scale.set(layout.scale);

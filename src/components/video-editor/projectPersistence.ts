@@ -1014,6 +1014,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				webcam.positionPreset === "bottom-left" ||
 				webcam.positionPreset === "bottom-center" ||
 				webcam.positionPreset === "bottom-right" ||
+				webcam.positionPreset === "split-left" ||
+				webcam.positionPreset === "split-right" ||
 				webcam.positionPreset === "custom"
 					? webcam.positionPreset
 					: webcam.corner === "top-left" ||

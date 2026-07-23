@@ -858,8 +858,8 @@ const CAMERA_LAYOUT_CARDS = [
 	},
 	{
 		id: "split-left",
-		label: "Sol Dikey Bölme",
-		preset: "center-left" as const,
+		label: "Sol Dikey Bölme (Split)",
+		preset: "split-left" as const,
 		cornerRadius: 14,
 		size: 45,
 		icon: "split-left",
@@ -882,8 +882,8 @@ const CAMERA_LAYOUT_CARDS = [
 	},
 	{
 		id: "split-right",
-		label: "Sağ Dikey Bölme",
-		preset: "center-right" as const,
+		label: "Sağ Dikey Bölme (Split)",
+		preset: "split-right" as const,
 		cornerRadius: 14,
 		size: 45,
 		icon: "split-right",

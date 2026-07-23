@@ -1,6 +1,6 @@
 import { Application, Graphics, Sprite } from "pixi.js";
 import { drawSquircleOnGraphics } from "@/lib/geometry/squircle";
-import { ADVANCED_VERTICAL_PADDING_MAX, type CropRegion, type Padding } from "../types";
+import { ADVANCED_VERTICAL_PADDING_MAX, type CropRegion, type Padding, type WebcamPositionPreset } from "../types";
 
 export const PADDING_SCALE_FACTOR = 0.2;
 export const BASE_PREVIEW_WIDTH = 1920;
@@ -46,8 +46,9 @@ export function computePaddedLayout(params: {
 	cropRegion: CropRegion;
 	videoWidth: number;
 	videoHeight: number;
+	webcamPositionPreset?: WebcamPositionPreset;
 }): PaddedLayoutResult {
-	const { width, height, padding, frameInsets, cropRegion, videoWidth, videoHeight } = params;
+	const { width, height, padding, frameInsets, cropRegion, videoWidth, videoHeight, webcamPositionPreset } = params;
 
 	// Apply asymmetrical padding
 	const p =
@@ -71,7 +72,15 @@ export function computePaddedLayout(params: {
 	const topPadFrac = (Math.min(topPercent, 100) / 100) * PADDING_SCALE_FACTOR;
 	const bottomPadFrac = (Math.min(bottomPercent, 100) / 100) * PADDING_SCALE_FACTOR;
 
-	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac);
+	let extraLeftPadFrac = 0;
+	let extraRightPadFrac = 0;
+	if (webcamPositionPreset === "split-left") {
+		extraLeftPadFrac = 0.28;
+	} else if (webcamPositionPreset === "split-right") {
+		extraRightPadFrac = 0.28;
+	}
+
+	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac - extraLeftPadFrac - extraRightPadFrac);
 	const availableFracH = Math.max(0, 1.0 - topPadFrac - bottomPadFrac);
 
 	const maxDisplayWidth = width * availableFracW;
@@ -101,7 +110,7 @@ export function computePaddedLayout(params: {
 	const fullFrameDisplayW = fullFrameVideoW * scale;
 	const fullFrameDisplayH = fullFrameVideoH * scale;
 
-	const availableCenterX = leftPadFrac * width + maxDisplayWidth / 2;
+	const availableCenterX = (leftPadFrac + extraLeftPadFrac) * width + maxDisplayWidth / 2;
 	const availableCenterY = isAdvancedPadding
 		? (() => {
 				const verticalTravel = Math.max(0, height - fullFrameDisplayH);
@@ -151,6 +160,7 @@ interface LayoutParams {
 	lockedVideoDimensions?: { width: number; height: number } | null;
 	borderRadius?: number;
 	padding?: Padding | number;
+	webcamPositionPreset?: WebcamPositionPreset;
 	/** Screen insets from the active device frame, used to scale/center the full frame */
 	frameInsets?: { top: number; right: number; bottom: number; left: number } | null;
 }
@@ -182,6 +192,7 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		borderRadius = 0,
 		padding = 0,
 		frameInsets,
+		webcamPositionPreset,
 	} = params;
 
 	const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
@@ -211,6 +222,7 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		cropRegion: crop,
 		videoWidth,
 		videoHeight,
+		webcamPositionPreset,
 	});
 
 	videoSprite.scale.set(layout.scale);

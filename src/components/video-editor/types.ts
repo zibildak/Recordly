@@ -125,6 +125,8 @@ export type WebcamPositionPreset =
 	| "center"
 	| "center-right"
 	| "bottom-center"
+	| "split-left"
+	| "split-right"
 	| "custom";
 
 export interface WebcamOverlaySettings {
