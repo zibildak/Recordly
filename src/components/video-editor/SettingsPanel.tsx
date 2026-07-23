@@ -847,6 +847,138 @@ const WEBCAM_POSITION_PRESETS: Array<{
 	{ preset: "bottom-right", label: "↘" },
 ];
 
+const CAMERA_LAYOUT_CARDS = [
+	{
+		id: "circle-bottom-left",
+		label: "Sol Alt Daire",
+		preset: "bottom-left" as const,
+		cornerRadius: 90,
+		size: 28,
+		icon: "circle-bottom-left",
+	},
+	{
+		id: "split-left",
+		label: "Sol Dikey Bölme",
+		preset: "center-left" as const,
+		cornerRadius: 14,
+		size: 45,
+		icon: "split-left",
+	},
+	{
+		id: "corner-top-left",
+		label: "Sol Üst",
+		preset: "top-left" as const,
+		cornerRadius: 14,
+		size: 28,
+		icon: "corner-top-left",
+	},
+	{
+		id: "corner-bottom-right",
+		label: "Sağ Alt",
+		preset: "bottom-right" as const,
+		cornerRadius: 14,
+		size: 28,
+		icon: "corner-bottom-right",
+	},
+	{
+		id: "split-right",
+		label: "Sağ Dikey Bölme",
+		preset: "center-right" as const,
+		cornerRadius: 14,
+		size: 45,
+		icon: "split-right",
+	},
+	{
+		id: "center-large",
+		label: "Geniş Odak",
+		preset: "center" as const,
+		cornerRadius: 18,
+		size: 55,
+		icon: "center-large",
+	},
+];
+
+function CameraLayoutPreviewIcon({ type, active }: { type: string; active: boolean }) {
+	const strokeColor = active ? "#3B82F6" : "rgba(255,255,255,0.4)";
+	const fillColor = active ? "#2563EB" : "rgba(255,255,255,0.2)";
+	const bgFill = "rgba(255,255,255,0.05)";
+
+	return (
+		<svg viewBox="0 0 72 44" className="w-full h-auto rounded" fill="none">
+			<rect
+				x="1"
+				y="1"
+				width="70"
+				height="42"
+				rx="5"
+				fill={bgFill}
+				stroke={active ? "#2563EB" : "rgba(255,255,255,0.15)"}
+				strokeWidth={active ? 1.5 : 1}
+			/>
+
+			{type === "circle-bottom-left" && (
+				<>
+					<circle cx="14" cy="30" r="7" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 5 22 H 9 M 5 22 V 26" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 23 22 H 19 M 23 22 V 26" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 5 38 H 9 M 5 38 V 34" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 23 38 H 19 M 23 38 V 34" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+
+			{type === "split-left" && (
+				<>
+					<rect x="4" y="4" width="28" height="36" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 2 2 H 6 M 2 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 34 2 H 30 M 34 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 2 42 H 6 M 2 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 34 42 H 30 M 34 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+
+			{type === "corner-top-left" && (
+				<>
+					<rect x="4" y="4" width="28" height="20" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 2 2 H 6 M 2 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 34 2 H 30 M 34 2 V 6" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 2 26 H 6 M 2 26 V 22" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 34 26 H 30 M 34 26 V 22" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+
+			{type === "corner-bottom-right" && (
+				<>
+					<rect x="44" y="22" width="24" height="18" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 42 20 H 46 M 42 20 V 24" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 70 20 H 66 M 70 20 V 24" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 42 42 H 46 M 42 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 70 42 H 66 M 70 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+
+			{type === "split-right" && (
+				<>
+					<rect x="34" y="16" width="34" height="24" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 32 14 H 36 M 32 14 V 18" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 70 14 H 66 M 70 14 V 18" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 32 42 H 36 M 32 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 70 42 H 66 M 70 42 V 38" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+
+			{type === "center-large" && (
+				<>
+					<rect x="14" y="8" width="44" height="28" rx="3" fill={fillColor} stroke={strokeColor} strokeWidth="1" />
+					<path d="M 12 6 H 16 M 12 6 V 10" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 60 6 H 56 M 60 6 V 10" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 12 38 H 16 M 12 38 V 34" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+					<path d="M 60 38 H 56 M 60 38 V 34" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
+				</>
+			)}
+		</svg>
+	);
+}
+
 type CursorStyleOption = { value: CursorStyle; label: string };
 
 type WallpaperTile = {
@@ -1923,6 +2055,19 @@ export function SettingsPanel({
 			positionX: position.x,
 			positionY: position.y,
 			corner: resolveWebcamCorner(preset, webcam.corner),
+		});
+	};
+
+	const applyCameraLayout = (card: (typeof CAMERA_LAYOUT_CARDS)[number]) => {
+		if (!webcam) return;
+		const position = getWebcamPositionForPreset(card.preset);
+		updateWebcam({
+			positionPreset: card.preset,
+			positionX: position.x,
+			positionY: position.y,
+			corner: resolveWebcamCorner(card.preset, webcam.corner),
+			cornerRadius: card.cornerRadius,
+			size: card.size,
 		});
 	};
 
@@ -3967,6 +4112,39 @@ export function SettingsPanel({
 										})
 									}
 								/>
+							</div>
+							<div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 space-y-2.5">
+								<div className="flex items-center justify-between">
+									<span className="text-[11px] font-semibold text-foreground/90">
+										Camera Layout
+									</span>
+								</div>
+								<div className="grid grid-cols-3 gap-2">
+									{CAMERA_LAYOUT_CARDS.map((card) => {
+										const isActive =
+											webcamPositionPreset === card.preset &&
+											(card.cornerRadius === undefined || webcam?.cornerRadius === card.cornerRadius);
+										return (
+											<button
+												key={card.id}
+												type="button"
+												title={card.label}
+												onClick={() => applyCameraLayout(card)}
+												className={cn(
+													"group relative flex flex-col items-center justify-center rounded-lg border p-1.5 transition-all duration-150 outline-none",
+													isActive
+														? "border-[#2563EB] bg-[#2563EB]/15 ring-1 ring-[#2563EB] shadow-sm shadow-[#2563EB]/30"
+														: "border-foreground/10 bg-foreground/[0.02] hover:border-foreground/25 hover:bg-foreground/[0.06]",
+												)}
+											>
+												<CameraLayoutPreviewIcon type={card.icon} active={isActive} />
+												<span className="mt-1 text-[9px] font-medium text-muted-foreground group-hover:text-foreground line-clamp-1">
+													{card.label}
+												</span>
+											</button>
+										);
+									})}
+								</div>
 							</div>
 							<div className="rounded-lg bg-foreground/[0.03] px-2.5 py-2">
 								<div className="mb-2 text-[10px] text-muted-foreground">
