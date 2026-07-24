@@ -328,7 +328,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [isMacOS, setIsMacOS] = useState(false);
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
-	const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
+	const [systemAudioEnabled, setSystemAudioEnabled] = useState(true);
 	const [webcamEnabled, setWebcamEnabled] = useState(false);
 	const [webcamDeviceId, setWebcamDeviceId] = useState<string | undefined>(undefined);
 	const [countdownDelay, setCountdownDelayState] = useState(3);
@@ -370,6 +370,21 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const micFallbackPauseStartedAt = useRef<number | null>(null);
 	const micFallbackPausedDurationMs = useRef(0);
 	const micFallbackPauseIntervals = useRef<MicrophoneFallbackPauseInterval[]>([]);
+	// Long-recording resilience: the fallback microphone is routed through a
+	// persistent AudioContext -> MediaStreamDestination so the MediaRecorder keeps
+	// running from a track that never ends. If the physical mic device drops mid
+	// session (common on virtual devices such as NVIDIA Broadcast during 30-50 min
+	// recordings), we re-acquire it and reconnect to the same destination without
+	// restarting the recorder, keeping a single valid WebM file.
+	const micFallbackAudioContext = useRef<AudioContext | null>(null);
+	const micFallbackDestination = useRef<MediaStreamAudioDestinationNode | null>(null);
+	const micFallbackSourceNode = useRef<MediaStreamAudioSourceNode | null>(null);
+	const micFallbackDeviceStream = useRef<MediaStream | null>(null);
+	const micFallbackRestarting = useRef(false);
+	const micFallbackWasActive = useRef(false);
+	const restartMicFallbackDeviceStreamRef = useRef<() => Promise<void>>(async () => {
+		/* replaced after restartMicFallbackDeviceStream is defined */
+	});
 	const browserMicrophoneProfile = useRef<BrowserMicrophoneProfile>(
 		DEFAULT_BROWSER_MICROPHONE_PROFILE,
 	);
@@ -596,6 +611,25 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			micFallbackRecorderMetadata.current = null;
 			resetMicFallbackTimingDiagnostics();
 		}
+
+		// Tear down the fallback microphone audio graph (source node, device
+		// stream and AudioContext) if it was created for this session.
+		try {
+			micFallbackSourceNode.current?.disconnect();
+		} catch {
+			/* ignore */
+		}
+		micFallbackSourceNode.current = null;
+		micFallbackDestination.current = null;
+		if (micFallbackDeviceStream.current) {
+			micFallbackDeviceStream.current.getTracks().forEach((track) => track.stop());
+			micFallbackDeviceStream.current = null;
+		}
+		if (micFallbackAudioContext.current) {
+			micFallbackAudioContext.current.close().catch(() => undefined);
+			micFallbackAudioContext.current = null;
+		}
+		micFallbackRestarting.current = false;
 	}, [resetMicFallbackTimingDiagnostics]);
 
 	const appendMicFallbackChunk = useCallback(
@@ -628,6 +662,104 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		},
 		[getMicFallbackRecordedElapsedMs],
 	);
+
+	const teardownMicFallbackAudioGraph = useCallback(() => {
+		try {
+			micFallbackSourceNode.current?.disconnect();
+		} catch {
+			/* ignore */
+		}
+		micFallbackSourceNode.current = null;
+		micFallbackDestination.current = null;
+		if (micFallbackDeviceStream.current) {
+			micFallbackDeviceStream.current.getTracks().forEach((track) => track.stop());
+			micFallbackDeviceStream.current = null;
+		}
+		if (micFallbackAudioContext.current) {
+			micFallbackAudioContext.current.close().catch(() => undefined);
+			micFallbackAudioContext.current = null;
+		}
+		micFallbackRestarting.current = false;
+	}, []);
+
+	const attachMicFallbackTrackWatchers = useCallback((deviceStream: MediaStream) => {
+		const track = deviceStream.getAudioTracks()[0];
+		if (!track) {
+			return;
+		}
+
+		// The physical device ended (unplugged, virtual device reset, driver
+		// glitch under long-session load). Re-acquire and reconnect in place.
+		track.onended = () => {
+			if (micFallbackRecorder.current) {
+				void restartMicFallbackDeviceStreamRef.current();
+			}
+		};
+		track.onmute = () => {
+			toast.warning(
+				"Microphone signal dropped mid-recording. Trying to keep capturing — check your mic.",
+				{ id: MICROPHONE_FALLBACK_ERROR_TOAST_ID, duration: 6000 },
+			);
+		};
+		track.onunmute = () => {
+			toast.dismiss(MICROPHONE_FALLBACK_ERROR_TOAST_ID);
+		};
+	}, []);
+
+	const restartMicFallbackDeviceStream = useCallback(async () => {
+		const context = micFallbackAudioContext.current;
+		const destination = micFallbackDestination.current;
+		const constraints = micFallbackRequestedConstraints.current;
+		const recorderState = micFallbackRecorder.current?.state;
+		if (
+			!context ||
+			!destination ||
+			!constraints ||
+			micFallbackRestarting.current ||
+			(recorderState !== "recording" && recorderState !== "paused")
+		) {
+			return;
+		}
+
+		micFallbackRestarting.current = true;
+		try {
+			try {
+				micFallbackSourceNode.current?.disconnect();
+			} catch {
+				/* ignore */
+			}
+			micFallbackSourceNode.current = null;
+			if (micFallbackDeviceStream.current) {
+				micFallbackDeviceStream.current.getTracks().forEach((track) => track.stop());
+				micFallbackDeviceStream.current = null;
+			}
+
+			if (context.state === "suspended") {
+				await context.resume().catch(() => undefined);
+			}
+
+			const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+			micFallbackDeviceStream.current = newStream;
+			const newSource = context.createMediaStreamSource(newStream);
+			newSource.connect(destination);
+			micFallbackSourceNode.current = newSource;
+			attachMicFallbackTrackWatchers(newStream);
+			toast.success("Microphone reconnected — recording continues.", {
+				id: MICROPHONE_FALLBACK_ERROR_TOAST_ID,
+				duration: 5000,
+			});
+		} catch (error) {
+			console.warn("Failed to restart microphone fallback stream:", error);
+			toast.error(
+				"Microphone disconnected and could not be reconnected. The rest of the recording may have no microphone audio.",
+				{ id: MICROPHONE_FALLBACK_ERROR_TOAST_ID, duration: 10000 },
+			);
+		} finally {
+			micFallbackRestarting.current = false;
+		}
+	}, [attachMicFallbackTrackWatchers]);
+
+	restartMicFallbackDeviceStreamRef.current = restartMicFallbackDeviceStream;
 
 	const resolveBrowserCaptureSource = useCallback(async (source: ProcessedDesktopSource) => {
 		if (!source?.id?.startsWith("screen:")) {
@@ -757,14 +889,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				recorder.stream.getTracks().forEach((track) => track.stop());
 				micFallbackRecorder.current = null;
 				micFallbackRecorderStartedAt.current = null;
+				teardownMicFallbackAudioGraph();
 				resolve(blob);
 			};
 			try {
 				recorder.requestData();
-			} catch {}
+			} catch {
+				/* best-effort flush before stop */
+			}
 			recorder.stop();
 		});
-	}, [appendMicFallbackChunk, closeMicFallbackPauseInterval]);
+	}, [appendMicFallbackChunk, closeMicFallbackPauseInterval, teardownMicFallbackAudioGraph]);
 
 	const pauseMicFallbackRecorder = useCallback(() => {
 		const recorder = micFallbackRecorder.current;
@@ -805,7 +940,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			mediaTrackSettings?: MicrophoneTrackSettingsSnapshot | null,
 		) => {
 			const micFallbackBlob = await micFallbackBlobPromise;
-			if (!micFallbackBlob) {
+			if (!micFallbackBlob || micFallbackBlob.size === 0) {
+				// If a microphone fallback was actually started for this session but
+				// produced no audio, surface it instead of silently dropping the mic.
+				if (micFallbackWasActive.current) {
+					console.warn(
+						"Microphone fallback produced no audio for this recording.",
+					);
+					toast.error(
+						"No microphone audio was captured for this recording. The recording was saved without a microphone track.",
+						{ id: MICROPHONE_SIDECAR_ERROR_TOAST_ID, duration: 10000 },
+					);
+				}
+				micFallbackWasActive.current = false;
 				micFallbackStartDelayMs.current = null;
 				micFallbackTrackSettings.current = null;
 				micFallbackRequestedConstraints.current = null;
@@ -814,6 +961,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				resetMicFallbackTimingDiagnostics();
 				return;
 			}
+			micFallbackWasActive.current = false;
 
 			try {
 				const arrayBuffer = await micFallbackBlob.arrayBuffer();
@@ -1531,7 +1679,31 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 								micFallbackAudioInputDevices.current,
 							);
 							micFallbackChunks.current = [];
-							const recorder = new MediaRecorder(micStream, {
+							micFallbackDeviceStream.current = micStream;
+
+							// Route the mic through a persistent AudioContext graph so the
+							// MediaRecorder records a destination track that never ends, even
+							// if the physical device drops during a long recording.
+							const audioContext = new AudioContext({ sampleRate: 48000 });
+							micFallbackAudioContext.current = audioContext;
+							const destination = audioContext.createMediaStreamDestination();
+							micFallbackDestination.current = destination;
+							const source = audioContext.createMediaStreamSource(micStream);
+							micFallbackSourceNode.current = source;
+							source.connect(destination);
+							attachMicFallbackTrackWatchers(micStream);
+							// Chromium suspends AudioContexts when the window is hidden/occluded
+							// for a while; keep it running so the mic never goes silent.
+							audioContext.onstatechange = () => {
+								if (
+									audioContext.state === "suspended" &&
+									micFallbackRecorder.current
+								) {
+									audioContext.resume().catch(() => undefined);
+								}
+							};
+
+							const recorder = new MediaRecorder(destination.stream, {
 								mimeType: "audio/webm;codecs=opus",
 								audioBitsPerSecond: AUDIO_BITRATE_VOICE,
 							});
@@ -1543,13 +1715,23 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							resetMicFallbackTimingDiagnostics();
 							micFallbackRecorderStartedAt.current = performance.now();
 							recorder.ondataavailable = appendMicFallbackChunk;
+							recorder.onerror = (event) => {
+								console.warn("Microphone fallback recorder error:", event);
+								toast.error(
+									"Microphone recording hit an error. The recording may have no microphone audio from this point.",
+									{ id: MICROPHONE_FALLBACK_ERROR_TOAST_ID, duration: 10000 },
+								);
+							};
 							micFallbackStartDelayMs.current = Math.max(
 								0,
 								Date.now() - mainStartedAt,
 							);
 							recorder.start(RECORDER_TIMESLICE_MS);
 							micFallbackRecorder.current = recorder;
+							micFallbackWasActive.current = true;
 						} catch (micError) {
+							micFallbackWasActive.current = false;
+							teardownMicFallbackAudioGraph();
 							micFallbackStartDelayMs.current = null;
 							micFallbackTrackSettings.current = null;
 							micFallbackRequestedConstraints.current = null;
