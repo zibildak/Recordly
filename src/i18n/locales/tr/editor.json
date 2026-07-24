@@ -1,0 +1,141 @@
+{
+	"playback": {
+		"play": "Oynat",
+		"pause": "Duraklat",
+		"skipBack": "Geri Sar",
+		"skipForward": "İleri Sar",
+		"muteUnmute": "Sesi Kapat / Aç"
+	},
+	"annotations": {
+		"settings": "Açıklama Ayarları",
+		"active": "Etkin",
+		"text": "Metin",
+		"image": "Görsel",
+		"arrow": "Ok İşareti",
+		"blur": "Bulanıklaştırma",
+		"textContent": "Metin İçeriği",
+		"textPlaceholder": "Metninizi buraya yazın...",
+		"fontStyle": "Metin Stili",
+		"selectStyle": "Stil seçin",
+		"size": "Boyut",
+		"toggleBold": "Kalın",
+		"toggleItalic": "İtalik",
+		"toggleUnderline": "Altı Çizili",
+		"alignLeft": "Sola Hizala",
+		"alignCenter": "Ortala",
+		"alignRight": "Sağa Hizala",
+		"textColor": "Metin Rengi",
+		"background": "Arka Plan",
+		"none": "Yok",
+		"clearBackground": "Arka Planı Kaldır",
+		"uploadImage": "Görsel Yükle",
+		"supportedFormats": "Desteklenen biçimler: JPG, PNG, GIF, WebP",
+		"arrowDirection": "Ok Yönü",
+		"strokeWidth": "Çizgi Kalınlığı: {{width}}px",
+		"arrowColor": "Ok Rengi",
+		"deleteAnnotation": "Açıklamayı Sil",
+		"shortcutsAndTips": "Kısayollar & İpuçları",
+		"tipSelectAnnotation": "Oynatma kafasını çakışan açıklama alanına getirin ve düzenlemek istediğiniz öğeyi seçin.",
+		"tipCycleForward": "Çakışan öğeler arasında geçiş yapmak için Tab tuşunu kullanın.",
+		"tipCycleBackward": "Geriye doğru geçiş yapmak için Shift+Tab tuşlarını kullanın.",
+		"imageUploadSuccess": "Görsel başarıyla yüklendi!",
+		"imageUploadError": "Lütfen geçerli bir JPG, PNG, GIF veya WebP görseli yükleyin.",
+		"blurStrength": "Bulanıklık Derecesi: {{strength}}",
+		"solidColor": "Düz Renk (Sansür)",
+		"borderRadius": "Kenar Yuvarlaklığı"
+	},
+	"fontStyles": {
+		"classic": "Klasik",
+		"editor": "Editör",
+		"strong": "Belirgin",
+		"typewriter": "Daktilo",
+		"deco": "Dekoratif",
+		"simple": "Yalın",
+		"modern": "Modern",
+		"clean": "Temiz"
+	},
+	"format": {
+		"mp4Video": "MP4 Video",
+		"mp4Description": "Yüksek kaliteli video dosyası",
+		"gifAnimation": "GIF Animasyonu",
+		"gifDescription": "Sosyal medyada paylaşmak için hareketli görsel"
+	},
+	"gifOptions": {
+		"frameRate": "Kare Hızı (FPS)",
+		"outputSize": "Çıkış Boyutu",
+		"outputDimensions": "Çözünürlük: {{width}} × {{height}}px",
+		"loopAnimation": "Sürekli Döngü",
+		"loopDescription": "GIF animasyonu durmaksızın tekrarlanır"
+	},
+	"tutorial": {
+		"howTrimmingWorks": "Video kesme işlemi nasıl çalışır?",
+		"title": "Kesme İşlemi Nasıl Çalışır?",
+		"understanding": "Videonuzun istenmeyen kısımlarını nasıl çıkaracağınızı öğrenin.",
+		"descriptionP1": "Video kesme (Trim) aracı, videonuzdan",
+		"descriptionRemove": "kaldırmak",
+		"descriptionP2": "istediğiniz kısımları belirleyerek çalışır.",
+		"descriptionP3": "Zaman çizgisi üzerinde kırmızı renkle işaretlenmiş olan tüm alanlar, videoyu dışa aktarırken kesilip atılacaktır.",
+		"visualExample": "Görsel Örnek",
+		"removed": "KALDIRILAN ALAN",
+		"kept": "Korunan Alan",
+		"finalVideo": "Son Video",
+		"part": "Bölüm {{number}}",
+		"addTrimStep": "1. Kesme Alanı Ekle",
+		"addTrimDesc": "Kaldırılacak bir bölüm belirlemek için T tuşuna basın veya makas simgesine tıklayın.",
+		"adjustStep": "2. Sınırları Ayarla",
+		"adjustDesc": "Kırmızı bölgenin kenarlarından tutup sürükleyerek kesmek istediğiniz alanı tam olarak kaplayın."
+	},
+	"feedback": {
+		"trigger": "Geri Bildirim",
+		"title": "İletişim & Destek",
+		"description": "Bir hata bildirmek veya öneride bulunmak için bizimle iletişime geçin.",
+		"emailLabel": "E-posta",
+		"xLabel": "X (Twitter)",
+		"reportIssue": "Sorun bildir / Öneri gönder",
+		"openFailed": "Bağlantı açılamadı."
+	},
+	"keyboardShortcuts": {
+		"trigger": "Kısayollar",
+		"title": "Klavye Kısayolları",
+		"description": "Zaman çizgisi ve editör kontrolleri için hızlı kısayol referansları.",
+		"customizeTooltip": "Kısayolları özelleştir",
+		"customize": "Özelleştir",
+		"panTimeline": "Zaman Çizelgesini Kaydır",
+		"zoomTimeline": "Zaman Çizelgesini Ölçeklendir",
+		"cycleAnnotations": "Açıklamalar Arası Seçim",
+		"tab": "Tab Tuşu"
+	},
+	"actions": {
+		"saveAgain": "Yeniden Kaydet",
+		"showInFolder": "Klasörde Göster"
+	},
+	"project": {
+		"untitled": "Başlıksız Proje"
+	},
+	"nativeCaptureUnavailable": {
+		"title": "Donanımsal imleç katmanı oluşturulamıyor.",
+		"description": "Cihazınız yerel ekran yakalamayı desteklemiyor. Bu durum Recordly'nin çalışmasını engellemez ancak imleç yumuşatma efektinin kullanılmasını imkansız hale getirir.",
+		"confirm": "Anladım"
+	},
+	"exportStatus": {
+		"exporting": "Dışa Aktarılıyor",
+		"renderingFile": "Dosyanız oluşturuluyor.",
+		"preparing": "Dışa aktarım hazırlanıyor...",
+		"completePercent": "%{{percent}} tamamlandı",
+		"issue": "Aktarım Sorunu",
+		"complete": "Dışa Aktarma Tamamlandı",
+		"savedSuccessfully": "Dosyanız başarıyla kaydedildi."
+	},
+	"export": {
+		"processingAudioEdits": "Ses hızlandırma ve katman geçişleri işleniyor..."
+	},
+	"toolbar": {
+		"addLayer": "Katman Ekle",
+		"splitClip": "Klibi Böl (C)"
+	},
+	"timeline": {
+		"expand": "Zaman Çizgisini Genişlet",
+		"collapse": "Zaman Çizgisini Daralt"
+	},
+	"openRecordingsFolder": "Kayıtlar klasörünü aç"
+}

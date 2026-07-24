@@ -1,0 +1,3 @@
+@echo off
+echo Recordly baslatiliyor...
+npm run dev

@@ -1,0 +1,41 @@
+{
+	"zoom": {
+		"cannotPlace": "Yakınlaştırma buraya eklenemez",
+		"existsOrNoSpace": "Bu konumda zaten bir yakınlaştırma mevcut veya yeterli alan yok.",
+		"suggestHandlerUnavailable": "Yakınlaştırma öneri sistemi kullanılamıyor",
+		"noTelemetry": "İmleç hareket verisi (telemetri) bulunamadı",
+		"recordFirst": "İmleç tabanlı öneriler oluşturmak için önce bir ekran kaydı yapmalısınız.",
+		"noUsableTelemetry": "Kullanılabilir imleç hareket verisi yok",
+		"notEnoughMovement": "Kayıtta yeterli imleç hareketi tespit edilemedi.",
+		"noInteractionMoments": "Belirgin bir etkileşim anı bulunamadı",
+		"tryRecording": "Önemli eylemler etrafında tıklamalar yapmayı veya kısa süre duraklamayı deneyin.",
+		"noAutoZoomSlots": "Kullanılabilir otomatik yakınlaştırma alanı kalmadı",
+		"dwellPointsOverlap": "Algılanan odak noktaları mevcut yakınlaştırma bölgeleriyle çakışıyor.",
+		"addedSuggestions": "{{count}} adet etkileşim tabanlı yakınlaştırma önerisi eklendi",
+		"label": "Yakınlaştırma {{index}}",
+		"addZoom": "Yakınlaştırma Ekle (Z)",
+		"suggestZooms": "İmleç Hareketinden Öneri Oluştur"
+	},
+	"trim": {
+		"cannotPlace": "Kırpma alanı buraya eklenemez",
+		"existsOrNoSpace": "Bu konumda zaten bir kırpma mevcut veya yeterli alan yok.",
+		"label": "Kırpma {{index}}",
+		"addTrim": "Kırpma Ekle (T)"
+	},
+	"speed": {
+		"cannotPlace": "Hız ayarı buraya uygulanamaz",
+		"existsOrNoSpace": "Bu konumda zaten bir hız bölgesi mevcut veya yeterli alan yok.",
+		"label": "Hız"
+	},
+	"annotation": {
+		"label": "Açıklama/Not",
+		"image": "Görsel",
+		"addAnnotation": "Açıklama Ekle (A)"
+	},
+	"audio": {
+		"label": "Ses"
+	},
+	"addSpeed": "Hız Ekle (S)",
+	"resizeLeft": "Sola doğru genişlet",
+	"resizeRight": "Sağa doğru genişlet"
+}

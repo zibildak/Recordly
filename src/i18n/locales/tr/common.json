@@ -1,0 +1,26 @@
+{
+	"app": {
+		"name": "Recordly",
+		"editorTitle": "Recordly Editör",
+		"subtitle": "Ekran kaydetme ve video düzenleme",
+		"language": "Dil",
+		"manageRecordings": "Kayıtlar klasörünü aç"
+	},
+	"actions": {
+		"cancel": "İptal",
+		"close": "Kapat",
+		"export": "Dışa Aktar",
+		"load": "Yükle",
+		"redo": "Yinele",
+		"reset": "Sıfırla",
+		"save": "Kaydet",
+		"undo": "Geri Al",
+		"delete": "Sil",
+		"done": "Bitti"
+	},
+	"errors": {
+		"invalidFileType": "Geçersiz dosya türü",
+		"failedToUploadImage": "Görsel yüklenemedi",
+		"fileReadError": "Dosya okunurken bir hata oluştu."
+	}
+}

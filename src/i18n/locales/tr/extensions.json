@@ -1,0 +1,60 @@
+{
+	"title": "Eklentiler",
+	"tabs": {
+		"browse": "Eklenti Bul",
+		"installed": "Yüklü Eklentiler"
+	},
+	"actions": {
+		"submit": "Eklenti Gönder",
+		"docs": "Eklenti Belgeleri",
+		"refresh": "Yenile",
+		"openFolder": "Eklenti Klasörünü Aç",
+		"uninstall": "Kaldır",
+		"install": "Yükle",
+		"installing": "Yükleniyor...",
+		"add": "Ekle",
+		"retry": "Yeniden Dene",
+		"close": "Kapat",
+		"folder": "Klasör"
+	},
+	"status": {
+		"enabled": "Etkin",
+		"disabled": "Devre Dışı",
+		"installed": "Yüklü"
+	},
+	"detail": {
+		"by": "Geliştirici: {{author}}",
+		"unknownAuthor": "Bilinmeyen geliştirici",
+		"noDescription": "Açıklama yok",
+		"downloads": "{{count}} indirme",
+		"preview": "Önizleme",
+		"screenshotAlt": "Ekran Görüntüsü {{number}}",
+		"description": "Açıklama",
+		"tags": "Etiketler",
+		"permissions": "İzinler",
+		"location": "Konum",
+		"error": "Hata: {{message}}"
+	},
+	"empty": {
+		"title": "Eklenti Bulunmuyor",
+		"description": "Videolarınıza çerçeveler, imleç efektleri ve yeni düzenleme araçları eklemek için eklenti yükleyin."
+	},
+	"search": {
+		"placeholder": "Eklenti ara...",
+		"noResults": "Eklenti bulunamadı",
+		"noMarketplace": "Eklenti mağazası şu anda kullanılamıyor",
+		"count": "{{count}} eklenti",
+		"countPlural": "{{count}} eklenti"
+	},
+	"toast": {
+		"installedAndEnabled": "Eklenti yüklendi ve etkinleştirildi",
+		"uninstalled": "{{name}} kaldırıldı",
+		"uninstallFailed": "{{name}} kaldırma işlemi başarısız oldu",
+		"searchFailed": "Eklenti mağazası aramasında hata oluştu",
+		"refreshed": "Eklentiler yenilendi",
+		"refreshFailed": "Eklentiler yenilenemedi",
+		"marketplaceInstalled": "{{name}} yüklendi ve etkinleştirildi",
+		"marketplaceInstallFailed": "{{name}} yükleme işlemi başarısız oldu",
+		"enableFailed": "Eklenti etkinleştirilemedi"
+	}
+}
