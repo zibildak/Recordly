@@ -10,15 +10,12 @@ export function shouldStartWindowsBrowserMicrophoneFallback(
 	}
 
 	const mode = env[WINDOWS_MIC_CAPTURE_MODE_ENV]?.trim().toLowerCase();
-	if (mode === "native" || mode === "wasapi") {
-		return false;
-	}
-
-	if (!mode) {
+	if (mode === "browser" || mode === "fallback" || mode === "renderer") {
 		return true;
 	}
 
-	return mode === "browser" || mode === "fallback" || mode === "renderer";
+	// Default to native WASAPI microphone capture (matching OBS behavior)
+	return false;
 }
 
 export function shouldUseWindowsBrowserMicrophoneFallback(
