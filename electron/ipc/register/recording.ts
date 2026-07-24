@@ -1645,7 +1645,7 @@ export function registerRecordingHandlers(
 						"pcm_s16le",
 						sidecarPath,
 					],
-					{ timeout: 120000, maxBuffer: 10 * 1024 * 1024 },
+					{ timeout: 0, maxBuffer: 100 * 1024 * 1024 },
 				);
 				if (shouldKeepRecordingAudioSidecars()) {
 					await fs.rename(tempWebmPath, sourceWebmPath).catch(async () => {
