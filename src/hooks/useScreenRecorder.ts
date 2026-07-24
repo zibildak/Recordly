@@ -326,7 +326,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [finalizing, setFinalizing] = useState(false);
 	const [countdownActive, setCountdownActive] = useState(false);
 	const [isMacOS, setIsMacOS] = useState(false);
-	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
+	const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
 	const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
 	const [webcamEnabled, setWebcamEnabled] = useState(false);
