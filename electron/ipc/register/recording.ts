@@ -555,12 +555,12 @@ export function registerRecordingHandlers(
 
 					wcProc.stdout.on("data", (chunk: Buffer) => {
 						const msg = chunk.toString();
-						captureOutput = (captureOutput + msg).slice(-32768);
+						captureOutput += msg;
 						setWindowsCaptureOutputBuffer(captureOutput);
 					});
 					wcProc.stderr.on("data", (chunk: Buffer) => {
 						const msg = chunk.toString();
-						captureOutput = (captureOutput + msg).slice(-32768);
+						captureOutput += msg;
 						setWindowsCaptureOutputBuffer(captureOutput);
 					});
 
@@ -760,10 +760,10 @@ export function registerRecordingHandlers(
 				attachNativeCaptureLifecycle(captProc);
 
 				captProc.stdout.on("data", (chunk: Buffer) => {
-					setNativeCaptureOutputBuffer((nativeCaptureOutputBuffer + chunk.toString()).slice(-32768));
+					setNativeCaptureOutputBuffer(nativeCaptureOutputBuffer + chunk.toString());
 				});
 				captProc.stderr.on("data", (chunk: Buffer) => {
-					setNativeCaptureOutputBuffer((nativeCaptureOutputBuffer + chunk.toString()).slice(-32768));
+					setNativeCaptureOutputBuffer(nativeCaptureOutputBuffer + chunk.toString());
 				});
 
 				await waitForNativeCaptureStart(captProc);
@@ -1537,10 +1537,10 @@ export function registerRecordingHandlers(
 			setFfmpegCaptureProcess(ffProc);
 
 			ffProc.stdout.on("data", (chunk: Buffer) => {
-				setFfmpegCaptureOutputBuffer((ffmpegCaptureOutputBuffer + chunk.toString()).slice(-32768));
+				setFfmpegCaptureOutputBuffer(ffmpegCaptureOutputBuffer + chunk.toString());
 			});
 			ffProc.stderr.on("data", (chunk: Buffer) => {
-				setFfmpegCaptureOutputBuffer((ffmpegCaptureOutputBuffer + chunk.toString()).slice(-32768));
+				setFfmpegCaptureOutputBuffer(ffmpegCaptureOutputBuffer + chunk.toString());
 			});
 
 			await waitForFfmpegCaptureStart(ffProc);
