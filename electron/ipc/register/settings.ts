@@ -148,19 +148,19 @@ export function registerSettingsHandlers() {
 			const parsed = parseJsonWithByteOrderMark<Record<string, unknown>>(content);
 			return {
 				success: true,
-				microphoneEnabled: parsed.microphoneEnabled === true,
+				microphoneEnabled: parsed.microphoneEnabled !== false,
 				microphoneDeviceId:
 					typeof parsed.microphoneDeviceId === "string"
 						? parsed.microphoneDeviceId
 						: undefined,
-				systemAudioEnabled: parsed.systemAudioEnabled === true,
+				systemAudioEnabled: parsed.systemAudioEnabled !== false,
 			};
 		} catch {
 			return {
 				success: true,
-				microphoneEnabled: false,
+				microphoneEnabled: true,
 				microphoneDeviceId: undefined,
-				systemAudioEnabled: false,
+				systemAudioEnabled: true,
 			};
 		}
 	});
